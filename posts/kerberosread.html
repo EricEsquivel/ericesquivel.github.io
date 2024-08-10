@@ -88,7 +88,7 @@
 <p>Now this is certainly not a quick 5 minute read, but the goal is that this is a solid read to help you learn about Kerberos and the attacks associated with it, instead of having to use a bunch of resources to learn just a couple things here and there, or break your brain and read the 137 page <a href="https://www.ietf.org/rfc/rfc4120.txt">RFC4120</a>.</p>
 <p>On that note, I will be showing attacks from both Windows &amp; Linux.</p>
 <p>Performing Windows attacks requires dropping binaries on disk unless using a C2 framework which lets you use execute-assembly. I <strong>strongly</strong> recommend using a C2 framework if you want to do the Windows version of the attacks, but I show how to do it without it just in case. Also, when using Rubeus’ createnetonly command to import tickets into cmd.exe, a high-integrity shell will import it into your current session even while using /show, while a low integrity shell will spawn cmd.exe with the ticket imported into there.<br>
-<code>hidfe feawf feaw</code><br>
+
 Linux attacks will be done with my Kali Linux machine.</p>
 <hr>
 <h3 id="kerberos-background-information">Kerberos Background Information</h3>
