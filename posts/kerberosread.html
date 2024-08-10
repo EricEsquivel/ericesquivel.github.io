@@ -125,7 +125,8 @@
 <li><strong>sname:</strong> Target service principal name (SPN) for the resulting ticket</li>
 <li><strong>padata:</strong> pre-authentication data</li>
 </ul>
-<h2 id="the-confusion-begins-—-dissecting-the-kerberos-authentication-protocol">The Confusion Begins — Dissecting the Kerberos Authentication Protocol</h2>
+<br>
+<h2 id="the-confusion-begins-—-dissecting-the-kerberos-authentication-protocol">The Confusion Begins - Dissecting the Kerberos Authentication Protocol</h2>
 <h3 id="krb_as_req-—-authentication-service-exchange-part-1">1) KRB_AS_REQ — Authentication Service Exchange Part 1</h3>
 <p>The first step of the kerberos protocol is the KRB_AS_REQ message.</p>
 <p>In this AS_REQ message, the user will send a request to the AS for a ticket called the Ticket Granting Ticket (TGT) and they must also prove their identity through something called pre-authentication.</p>
@@ -212,6 +213,7 @@ Components of an AP-REQ; picture from HackTheBox</p>
 <p><img src="https://cdn-images-1.medium.com/max/716/1*cXck0i6AQeDGc_7FimYPdA.png" alt="https://cdn-images-1.medium.com/max/716/1*cXck0i6AQeDGc_7FimYPdA.png"></p>
 <p><img src="https://cdn-images-1.medium.com/max/716/1*mXwuDdlSPU9ROHQ9QCGWTQ.png" alt="https://cdn-images-1.medium.com/max/716/1*mXwuDdlSPU9ROHQ9QCGWTQ.png"><br>
 Contents of a TGT including the PAC;</p>
+<br>
 <h2 id="abusing-the-kerberos-protocol-for-attacks">Abusing the Kerberos Protocol for Attacks</h2>
 <p>We finally made it past the steps of the Kerberos authentication protocol, and now we can begin the attacks. I do my best to cover the attacks from both Linux &amp; Windows.</p>
 <h3 id="user-enumeration--password-spraying">User Enumeration &amp; Password Spraying</h3>
@@ -546,6 +548,7 @@ powerpick Get-DomainComputer -Identity dc | Set-DomainObject -Clear msDS-Allowed
     # OR
     impacket-psexec &lt;target_ip&gt; -k -no-pass
 </code></pre>
+<br>
 <h2 id="kerberos-ticket-forging-for-persistence">Kerberos Ticket Forging for Persistence</h2>
 <p>This section is about forging tickets for lateral movement and maintaining persistence.</p>
 <h3 id="silver-ticket">Silver Ticket</h3>
@@ -630,6 +633,7 @@ Ticket combinations from Zero-Point Security</p>
 3. # Now take the base64 TGT diamond ticket and pass it into createnetonly
    Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /domain:TESTLAB /username:Administrator /password:FakePass /ticket:&lt;TGT ticket&gt; /show
 </code></pre>
+<br>
 <h2 id="additional-kerberos-attacks">Additional Kerberos Attacks</h2>
 <p>I will now be covering additional Kerberos Attacks like U2U &amp; Sapphire Tickets, Kerberoasting without Pre-Authentication, UnPAC the Hash, sAMAccountName Spoofing, and SPN-Jacking!</p>
 <h3 id="u2u">U2U</h3>
@@ -668,8 +672,10 @@ Ticket combinations from Zero-Point Security</p>
 <h3 id="spn-jacking">SPN-Jacking</h3>
 <h3 id="shadow-credentials">Shadow Credentials</h3>
 <h3 id="unpac-the-hash">UnPAC the Hash</h3>
+<br>
 <h2 id="conclusion">Conclusion</h2>
 <p>Kerberos is certainly not an easy topic to grasp at first — it has lots of moving parts and terminology which make it difficult to understand. I created this blog with the goal of breaking down this complex protocol and make it simple enough for people wanting to learn more about how it works and the attacks associated with it. After reading this blog, you should have a solid grasp on Kerberos, and the ability to find and exploit many attacks from both Linux and Windows machines.</p>
+<br>
 <h2 id="resources">Resources</h2>
 <p>(linked in the order of the blog):</p>
 <p>User Enumeration &amp; Password Spraing</p>
