@@ -90,14 +90,22 @@
     <div class="row">
         <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
 
-            <div id="markdown-input">
-                # Hello, Markdown!
-                ## Second line
-                ### third line
-                **two star**
-                *one star*
-            </div>
-            <div id="html-output"></div>
+            
+            <script>
+                var converter = new showdown.Converter(),
+                    text      = `
+        # hello, markdown!
+        ## test 2 tags
+        ### test 3 tags
+
+        - list1
+        - list2
+        - list3
+                    `,
+                    html      = converter.makeHtml(text);
+
+                console.log(html);
+            </script>
 
         </div>
     </div>
@@ -153,15 +161,8 @@
     <!-- Custom Theme JavaScript -->
     <script src="/js/clean-blog.min.js"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-          var markdownInput = document.getElementById('markdown-input').value;
-          var htmlOutput = marked(markdownInput);
-          document.getElementById('html-output').innerHTML = htmlOutput;
-        });
-    </script>
+    <!-- Markdown to HTML -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
 
 </body>
 
