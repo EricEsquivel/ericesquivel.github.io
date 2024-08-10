@@ -12,15 +12,15 @@
     <title>The Last Kerberos Read You'll Ever Need</title>
 
     <!-- Bootstrap Core CSS -->
-    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet2">
 
     <!-- Custom CSS -->
-    <link href="/ericesquivel.github.io/" rel="stylesheet">
+    <link href="/ericesquivel.github.io/" rel="stylesheet2">
 
     <!-- Custom Fonts -->
-    <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
-    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
-    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/css'>
+    <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet2" type="text/css">
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet2' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet2' type='text/css'>
 
     <!-- stackedit.io -->
     <link rel="stylesheet" href="https://stackedit.io/style.css" /> 
@@ -32,52 +32,52 @@
 
     <!-- Navigation -->
     <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
-        <div class="container-fluid">
-            <!-- Brand and toggle get grouped for better mobile display -->
-            <div class="navbar-header page-scroll">
-                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
-                    <span class="sr-only">Toggle navigation</span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                </button>
-                <a class="navbar-brand" href="/index.html">Agent007's Blog</a>
-            </div>
+      <div class="container-fluid">
+          <!-- Brand and toggle get grouped for better mobile display -->
+          <div class="navbar-header page-scroll">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                  <span class="sr-only">Toggle navigation</span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+              </button>
+              <a class="navbar-brand" href="/index.html">Eric Esquivel's Blog</a>
+          </div>
 
-            <!-- Collect the nav links, forms, and other content for toggling -->
-            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-                <ul class="nav navbar-nav navbar-right">
-                    <li>
-                        <a href="/index.html">Home</a>
-                    </li>
-                    <li>
-                        <a href="/assets/resume.pdf">Resume</a>
-                    </li>
-                    <li>
-                        <a href="https://github.com/EricEsquivel">GitHub</a>
-                    </li>
-                </ul>
-            </div>
-            <!-- /.navbar-collapse -->
-        </div>
-        <!-- /.container -->
-    </nav>
+          <!-- Collect the nav links, forms, and other content for toggling -->
+          <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+              <ul class="nav navbar-nav navbar-right">
+                  <li>
+                      <a href="/index.html">Home</a>
+                  </li>
+                  <li>
+                      <a href="/assets/resume.pdf">Resume</a>
+                  </li>
+                  <li>
+                      <a href="https://github.com/EricEsquivel">GitHub</a>
+                  </li>
+              </ul>
+          </div>
+          <!-- /.navbar-collapse -->
+      </div>
+      <!-- /.container -->
+  </nav>
 
-    <!-- Page Header -->
-    <!-- Set your background image for this header on the line below. -->
-    <header class="intro-header" style="background-image: url('/img/home-bg.jpg')">
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
-                    <div class="site-heading">
-                        <h1>Clean Blog</h1>
-                        <hr class="small">
-                        <span class="subheading">A Clean Blog Theme by Start Bootstrap</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </header>
+  <!-- Page Header -->
+  <!-- Set your background image for this header on the line below. -->
+  <header class="intro-header" style="background-image: url('/img/redandblack.png')">
+      <div class="container">
+          <div class="row">
+              <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                  <div class="site-heading">
+                      <h1 font color="#000000">Eric Esquivel's Blog</h1>
+                      <hr class="small">
+                      <span class="subheading"></span>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </header>
 
 
 
@@ -132,48 +132,49 @@
 <p>(Technically, the first AS-REQ packet is sent without authentication data to maintain backwards compatibility. It will succeed only if the <code>DONT_REQ_PREAUTH</code> flag in the Active Directory for the target account is set. Nowadays accounts require pre-auth by default. Once it fails, it it will send another AS-REQ with the pre-auth info)</p>
 <p><img src="https://cdn-images-1.medium.com/max/716/1*9hZKhly2HwWLG5RMgDeoqA.png" alt="https://cdn-images-1.medium.com/max/716/1*9hZKhly2HwWLG5RMgDeoqA.png"><br>
 Components of an AS-REQ; picture from HackTheBox</p>
-<p>What this picture above doesn’t show is the TGT request for the krbtgt SPN. It only shows the pre-authentication. But just remember, this AS-REQ request contains the TGT request, and the pre-authentication.</p>
+<p>What this picture above doesn’t show is the TGT request for the krbtgt SPN; It only shows the pre-authentication. But just remember, an AS-REQ request contains the TGT request, and the pre-authentication data.</p>
 <p><img src="https://cdn-images-1.medium.com/max/716/1*YjF6zXjhWiWxPjC9qJhsCw.png" alt="https://cdn-images-1.medium.com/max/716/1*YjF6zXjhWiWxPjC9qJhsCw.png"><br>
 Components of an AS-REQ in a PCAP;</p>
 <h3 id="krb_as_rep-—-authentication-service-exchange-part-2">2) KRB_AS_REP — Authentication Service Exchange Part 2</h3>
-<p>The AS receives the client’s request for a TGT (AS-REQ), it will inspect the cleartext username, fetch their credentials, and attempt to decrypt the authenticator the user encrypted using those creds.</p>
-<p>If it successfully decrypted the authenticator, and the timestamp lines up, the AS will send the user an AS-REP message containing a temporary session key, and a TGT where then the user will be successfully authenticated.</p>
+<p>Once the AS receives the client’s request for a TGT (AS-REQ), it will inspect the cleartext username, fetch their credentials, and attempt to decrypt the authenticator the user encrypted using those creds.</p>
+<p>If it successfully decrypted the authenticator, and the timestamp is recent, the AS will send the user an AS-REP message containing a temporary session key, and a TGT where then the user will be successfully authenticated.</p>
 <ul>
-<li>The TGT is basically a user’s identity card.</li>
+<li>The TGT is basically a user’s identity card since it includes the user's authorization data.</li>
 <li>By default is lasts for 8 hours before it expires.</li>
-<li>The TGT is encrypted with the KDC’s key (krbtgt’s account password hash) so the user can’t tamper with it</li>
-<li>The temporary session key is encrypted using the user’s key (password hash)</li>
+<li>One temporary session key is placed into the TGT.</li>
+<li>The TGT is encrypted with the KDC’s key (krbtgt’s account password hash) so the user can’t tamper with it.</li>
+<li>The temporary session key is encrypted using the user’s key (password hash).</li>
 </ul>
 <p>Therefore, this session key is duplicated in the response — one version is protected with the KDC’s key, and another is protected with the user’s key.</p>
 <p><img src="https://cdn-images-1.medium.com/max/716/1*gAwtyok62vx3M1U7AmhRVQ.png" alt="https://cdn-images-1.medium.com/max/716/1*gAwtyok62vx3M1U7AmhRVQ.png"><br>
 Components of an AS-REP; picture from HackTheBox</p>
 <p><img src="https://cdn-images-1.medium.com/max/716/1*dpknmd6tTd2GIjarlBdTJQ.png" alt="https://cdn-images-1.medium.com/max/716/1*dpknmd6tTd2GIjarlBdTJQ.png"><br>
 Components of an AS-REP in a PCAP;</p>
-<p>Now by default, all accounts require pre-authentication (the client must be able to prove their identity). If pre-authentication is not required for the user, which is a setting you can set, the authentication server does not know whether the user is actually the principal named in the request. It simply sends a reply without knowing or caring whether or not they are the same. If the user does not perform pre-authentication in the AS-REQ and the target account requires it, you will get the <code>KDC_ERR_PREAUTH_REQUIRED</code> error.</p>
+<p>Now by default, all accounts require pre-authentication (the client must be able to prove their identity). If pre-authentication is not required for the user, which is a setting you can set, the authentication server does not know whether the user is actually the principal named in the request. It simply sends an AS-REP without knowing or caring whether they are the same. If the user does not perform pre-authentication in the AS-REQ and the target account requires it, you will get the <code>KDC_ERR_PREAUTH_REQUIRED</code> error.</p>
 <p><strong>Note:</strong> Enabling <code>Do not require Kerberos preauthentication</code> adds the <code>DONT_REQ_PREAUTH</code> flag to the user’s <a href="https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/useraccountcontrol-manipulate-account-properties">UserAccountControl</a> (UAC) attribute.</p>
 <p><img src="https://cdn-images-1.medium.com/max/716/1*KekkGP4K8RGU3qVZplG4fw.png" alt="https://cdn-images-1.medium.com/max/716/1*KekkGP4K8RGU3qVZplG4fw.png"><br>
 Setting Up “Do not require Kerberos preauthentication” in ADUC;</p>
 <h3 id="krb_tgs_req-—-ticket-granting-service-exchange-part-1">3) KRB_TGS_REQ — Ticket-Granting Service Exchange Part 1</h3>
 <p>Now that is the end of the Authentication Service part of the KDC. The next component is the Ticket-Granting Service or TGS. The TGS is responsible for issuing service tickets, where as the AS was responsible for issuing TGTs.</p>
-<p>So the user now has a TGT that it will store in its kerberos tray.</p>
+<p>So the user now has a TGT that it will store in its memory.</p>
 <p>The next step is for the user to request a service ticket from the Ticket Granting Service (TGS).</p>
 <p>To do this, the user will send 3 things in the TGS_REQ message to the TGS.</p>
 <ol>
 <li>The SPN of the service they want to access. Format: SERVICE/HOST</li>
-<li>The TGT they previously received, containing their information and the copy of the session key</li>
-<li>An authenticator (current timestamp encrypted), which will be encrypted using the session key.</li>
+<li>The TGT they previously received from the AS which contains their information and the copy of the session key.</li>
+<li>An authenticator (current timestamp encrypted), which will now be encrypted using the session key.</li>
 </ol>
 <p><img src="https://cdn-images-1.medium.com/max/716/1*nhbQ6p0LVexQvHWH0i23AA.png" alt="https://cdn-images-1.medium.com/max/716/1*nhbQ6p0LVexQvHWH0i23AA.png"><br>
 Components of an TGS-REQ; picture from HackTheBox</p>
 <p><img src="https://cdn-images-1.medium.com/max/716/1*SHhzW3gn7AMhkfHTKoV3mQ.png" alt="https://cdn-images-1.medium.com/max/716/1*SHhzW3gn7AMhkfHTKoV3mQ.png"><br>
 Components of an TGS-REQ in a PCAP;</p>
 <h3 id="krb_tgs_rep-—-ticket-granting-service-exchange-part-2">4) KRB_TGS_REP — Ticket-Granting Service Exchange Part 2</h3>
-<p>Once the KDC (specifically the TGS) receives the <code>TGS-REQ</code> message from the user, they must verify the authenticator that was encrypted with the correct session key. The TGS will decrypt the TGT (which was encrypted with krbtgt creds), take the copy of the session key that was in there, and attempt to decrypt the user’s authenticator, and evaluate it.</p>
+<p>Once the KDC (specifically the TGS) receives the <code>TGS-REQ</code> message from the user, they must verify the authenticator was encrypted with the correct session key. The TGS will decrypt the TGT (which was encrypted with krbtgt creds), take the copy of the session key that was in there, and attempt to decrypt the user’s authenticator, and evaluate it.</p>
 <p>If it successfully validated the user’s authenticator &amp; TGT, the TGS will read the requested service’s SPN and generate 2 copies of a session key for the user to share with the requested server. One copy of the service session key is encrypted with the user’s logon session key, and the other copy is placed into the Service Ticket, along with the user’s authorization data taken from the TGT, and encrypts the Service Ticket with the service account’s key/password hash so the user can’t tamper with it. The KDC sends these credentials back to the client by replying with a message of type <code>TGS-REP</code>.</p>
 <ul>
 <li>The service ticket is used by the user to interact with the target service.</li>
 <li>By default is lasts for 10 hours before it expires.</li>
-<li>A service ticket contains three elements: 1. The name of the requested service (its SPN), <strong>unencrypted</strong>. 2. A copy of the user information that was present in the TGT. The service will later read this information to determine whether or not the user has the right to use it. Encrypted with service account’s key 3. A copy of the session key. Encrypted with service account’s key</li>
+<li>A service ticket contains three elements: 1. The name of the requested service (its SPN), <strong>unencrypted</strong>. 2. A copy of the user information that was present in the TGT. The service will later read this information to determine whether or not the user has the right to use it (encrypted with service account’s key) and 3. A copy of the session key (encrypted with service account’s key).</li>
 </ul>
 <p><img src="https://cdn-images-1.medium.com/max/716/1*0_BNxO6IpgFCOoxJlGxYvg.png" alt="https://cdn-images-1.medium.com/max/716/1*0_BNxO6IpgFCOoxJlGxYvg.png"><br>
 Components of an TGS-REP; picture from HackTheBox</p>
@@ -185,8 +186,8 @@ Components of an TGS-REP in a PCAP;</p>
 <li>Another copy of the session key encrypted with the user’s key/password hash</li>
 </ol>
 <h3 id="krb_ap_req-—-clientserver-exchange-part-1">5) KRB_AP_REQ — Client/Server Exchange Part 1</h3>
-<p>We’re finally done dealing with the KDC and all it’s parts. The final part of kerberos authentication is for the user to interact with the target server &amp; service.</p>
-<p>The user will take a look at the <code>TGS-REP</code> from last step and extract the session key and the Service Ticket given by the TGS. The user will now transmit the Service Ticket (encrypted by the target service account’s key), and a user authenticator (encrypted with the session key that was just extracted).</p>
+<p>We’re finally done dealing with the KDC and all it’s parts. The final part of Kerberos authentication is for the user to interact with the target server &amp; service.</p>
+<p>The user will take a look at the <code>TGS-REP</code> from last step and extract the session key and the Service Ticket given by the TGS. The user’s copy of the session key will be decrypted and the user will transmit a user authenticator, encrypted with the session key that was just decrypted, and the Service Ticket, encrypted with the target service account’s key.</p>
 <p>The user will send an <code>AP-REQ</code> message to the target service containing the Service Ticket and the Authenticator.</p>
 <p><img src="https://cdn-images-1.medium.com/max/716/1*oUyUgn6WolNmOMJeZ5s5Jg.png" alt="https://cdn-images-1.medium.com/max/716/1*oUyUgn6WolNmOMJeZ5s5Jg.png"><br>
 Components of an AP-REQ; picture from HackTheBox</p>
@@ -671,7 +672,7 @@ Ticket combinations from Zero-Point Security</p>
 <h3 id="unpac-the-hash">UnPAC the Hash</h3>
 <hr>
 <h2 id="conclusion">Conclusion</h2>
-<p>Kerberos is certainly not an easy topic to grasp at first — it has lots of moving parts and terminology which make it difficult to understand. I created this blog with the goal of breaking down this complex protocol and make it simple enough for people wanting to learn more about how it works and the attacks associated with it. After reading this blog, you should have a solid grasp on Kerberos, and the ability find and exploit many attacks from both Linux and Windows machines.</p>
+<p>Kerberos is certainly not an easy topic to grasp at first — it has lots of moving parts and terminology which make it difficult to understand. I created this blog with the goal of breaking down this complex protocol and make it simple enough for people wanting to learn more about how it works and the attacks associated with it. After reading this blog, you should have a solid grasp on Kerberos, and the ability to find and exploit many attacks from both Linux and Windows machines.</p>
 <h2 id="resources">Resources</h2>
 <p>(linked in the order of the blog):</p>
 <p>User Enumeration &amp; Password Spraing</p>
