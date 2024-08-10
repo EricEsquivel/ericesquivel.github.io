@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>GroupMe Bug Bounty</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link href="/css/clean-blog.min.css" rel="stylesheet">
+
+    <!-- Custom Fonts -->
+    <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/css'>
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+</head>
+
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/index.html">Eric Esquivel's Blog</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/index.html">Home</a>
+                    </li>
+                    <li>
+                        <a href="/assets/resume.pdf">Resume</a>
+                    </li>
+                    <li>
+                        <a href="https://github.com/EricEsquivel">GitHub</a>
+                    </li>
+                </ul>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <!-- Page Header -->
+    <!-- Set your background image for this header on the line below. -->
+    <header class="intro-header" style="background-image: url('/img/redandblack.png')">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                    <div class="site-heading">
+                        <h1 font color="#000000">Eric Esquivel's Blog</h1>
+                        <hr class="small">
+                        <span class="subheading"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+
+<body class="stackedit">
+<div class="stackedit__html">>
+
+<p><img src="https://miro.medium.com/v2/resize:fit:627/1*NA7niuArkjwD4Q3bj-VxgA.png" alt=""></p>
+<p>By: Eric Esquivel, Alex Bryant, Aditya Dindi</p>
+<h1 id="introduction">Introduction</h1>
+<p>Eric and Aditya got together to work on their group project for their business class at university. Their team for the project included other people, and the way which a lot of university and high school students communicate is through a platform called GroupMe. GroupMe is a mobile and web group messaging app owned by Microsoft, with millions of registered users.</p>
+<p>While looking around GroupMe, they got curious and 25 minutes later, wallah, an alert box appeared on their screens proving a Stored Cross-Site Scripting (XSS) vulnerability. Afterwards a close friend, Alex, joined and together they proceeded to escalate the vulnerability and successfully performed Cross-Site Request Forgery (CSRF) and postponed the group project.</p>
+<h2 id="what-is-xss-and-csrf">What is XSS and CSRF?</h2>
+<p>Cross-Site Scripting (XSS) is a type of attack where malicious JavaScript is injected in web applications and it is executed on user’s browsers. There are 3 types of XSS attacks: Reflected, DOM, and Stored.</p>
+<p>Reflected XSS is a vulnerability where the injected JavaScript reaches the back-end server and gets returned to the user without being filtered or sanitized.</p>
+<p>Stored XSS occurs when user input is stored on the target server and then a victim retrieves the stored data where the malicious JavaScript is executed in their browser.</p>
+<p>DOM XSS or Document Object Model XSS occurs when the injected JavaScript is used to change the page source through the DOM.</p>
+<p>Cross-Site Request Forgery (CSRF) is an attack where an attacker is able to perform and execute requests on behalf of the authenticated victim.</p>
+<h2 id="how-did-we-exploit-this-vulnerability">How did we exploit this vulnerability?</h2>
+<p>When a message is sent in GroupMe, the recipient receives a “message request”. This is a preview message where the recipient can either accept or deny a message. When a message is accepted, it becomes a full chat where the users can send messages back and forth.</p>
+<p>This is extremely important to know because when HTML and JavaScript was sent through as a message request, it was improperly being sanitized. As long as the user never accepts or denies the message request, an attacker is able to continuously send unsanitized HTML and JavaScript to the victim.</p>
+<p><img src="https://miro.medium.com/v2/resize:fit:430/0*A3Qg7HDJQmqOFNmt" alt=""><br>
+<em>Figure 1: Sending the malicious JavaScript payload to the Victim-Account user</em></p>
+<p><img src="https://miro.medium.com/v2/resize:fit:456/0*3KWnFkaeNnjPNbGV" alt=""><br>
+<em>Figure 2: Receiving the malicious JavaScript payload message from the Attacker-Account user</em></p>
+<p><img src="https://miro.medium.com/v2/resize:fit:439/0*XpYOYCELqQQXvEWn" alt=""><br>
+Figure 3: Malicious JavaScript is executed on the Victim-Account’s Browser</p>
+<p>Before knowing the specifics, Eric was able to pop an alert box on Aditya’s browser, but after Aditya accepted the message request to reply with his own payload, they were not able to perform XSS anymore as the full chat messages are properly sanitized. Alex quickly identified that the reason it worked the first time around was because it was a message request, and not a full chat where the sanitization was different. From here, we created additional accounts and made sure to not accept the messages so we could keep testing.</p>
+<p>We quickly created 2 simple XSS payloads:</p>
+<ol>
+<li>Redirect victims to different webpage like the signout page, for example.</li>
+<li>Remove the accept box from the user’s screen as soon as they read the message request so that they couldn’t mitigate the threat.</li>
+</ol>
+<p>However this wasn’t enough. We wanted to take this vulnerability further.</p>
+<p>After looking around GroupMe some more, we found that when users enable/disable 2-Factor Authentication (2FA), or change their email, they automatically send their stored X-Access-Token through the web request and are not required to enter their password for verification.</p>
+<p>We took advantage of this lack of verification and utilized a XSS payload to grab a user’s token value and performed CSRF by sending a POST request to the GroupMe web servers to change the account’s email address and disable 2FA. After that, we performed a password reset where an email will be sent to the email address we changed it to and completely take over the account.</p>
+<h2 id="impact">Impact</h2>
+<p>We created a “master” XSS payload where we were able to perform all of the following in one single message leading to an instant account takeover:</p>
+<ol>
+<li>Remove the accept message box</li>
+<li>Change the user account’s email address to one of our choosing</li>
+<li>Disable 2 factor authentication</li>
+<li>Sign the user out of their account</li>
+</ol>
+<h2 id="mitigations">Mitigations</h2>
+<p>Stored Cross-Site Scripting</p>
+<ul>
+<li>Input filtering: Making sure that any user input is filtered for only expected or valid input</li>
+<li>Utilizing Response Headers: Using appropriate response headers can help prevent Cross-Site Scripting by making sure HTTP / JavaScript is not executed when they are in the HTTP responses</li>
+<li>Content Security Policy: CSP works by limiting the resources that a page can load</li>
+</ul>
+<p>Cross-site Request Forgery</p>
+<ul>
+<li>CSRF Tokens: A CSRF token is a value that is generated by the back-end server is shared and checked with the client when the client is performing an action</li>
+</ul>
+<h2 id="conclusion">Conclusion</h2>
+<p>After finding and exploiting the unsanitized message requests, we were able to perform XSS to CSRF and send requests on behalf of the user as soon as they read our message, leading to immediate account takeover. Overall, there were some hiccups along the way during the review period, but we had a great experience finding and reporting this bug, and it has motivated us to stay curious and find more vulnerabilities like this one. (By the way, we got a 100 on our group project!)</p>
+<h2 id="credits">Credits:</h2>
+<p>This bug was found by the three independent security researchers listed below:</p>
+<p><strong><em>- Eric Esquivel | Agent007</em></strong></p>
+<p><a href="https://www.linkedin.com/in/ericesquivel1/">https://www.linkedin.com/in/ericesquivel1/</a></p>
+<p><strong><em>- Alex Bryant | AlonTheSlay</em></strong></p>
+<p><a href="https://www.linkedin.com/in/awb-alontheslay/">https://www.linkedin.com/in/awb-alontheslay/</a></p>
+<p><strong><em>- Aditya Dindi | Pyrus</em></strong></p>
+<p><a href="https://www.linkedin.com/in/adityadindi/">https://www.linkedin.com/in/adityadindi/</a></p>
+<p><strong>Microsoft’s Online Acknowledgement Page:</strong><br>
+<a href="https://msrc.microsoft.com/update-guide/acknowledgement/online">https://msrc.microsoft.com/update-guide/acknowledgement/online</a></p>
+<p><img src="https://miro.medium.com/v2/resize:fit:589/1*NaRRZKXUM5nwZYHgZbCu7Q.png" alt=""><br>
+Figure 4: Our public acknowledgements</p>
+
+    <!-- End of Main Content -->
+</div>
+
+    <hr>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                    <ul class="list-inline text-center">
+                        <li>
+                            <a href="#">
+                                <span class="fa-stack fa-lg">
+                                    <i class="fa fa-circle fa-stack-2x"></i>
+                                    <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#">
+                                <span class="fa-stack fa-lg">
+                                    <i class="fa fa-circle fa-stack-2x"></i>
+                                    <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#">
+                                <span class="fa-stack fa-lg">
+                                    <i class="fa fa-circle fa-stack-2x"></i>
+                                    <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                                </span>
+                            </a>
+                        </li>
+                    </ul>
+                    <p class="copyright text-muted">Eric Esquivel's Blog</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- jQuery -->
+    <script src="/js/jquery.js"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src="/js/bootstrap.min.js"></script>
+
+    <!-- Custom Theme JavaScript -->
+    <script src="/js/clean-blog.min.js"></script>
+
+
+</body>
+
+</html>
