@@ -2,3 +2,7 @@ h1 {
   line-height: 0
   margin;
 }
+
+h1::after {
+    border-bottom: 0px; /* Remove the underline specifically for h1 */
+}
