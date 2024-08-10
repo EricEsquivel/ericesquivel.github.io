@@ -13,7 +13,7 @@
 
     <!-- stackedit.io -->
     <link href="https://stackedit.io/style.css" rel="stylesheet">
-    <link href="/css/style.css" rel="stylesheet">
+    
 
     <!-- Bootstrap Core CSS -->
     <link href="/css/bootstrap.min.css" rel="stylesheet">
@@ -25,6 +25,8 @@
     <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
     <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
     <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/css'>
+
+    <link href="/css/style.css" rel="stylesheet">
 
 </head>
 
@@ -88,8 +90,7 @@
 <p>Here is my read on the Kerberos authentication protocol that I composed from lots of different resources to help me understand the details of what exactly is being sent, while also keeping it at a high level. Hopefully this is a resource others can use to better understand the why’s and how’s of the Kerberos protocol and attacks against it. Everything is ordered in one place, split into sections, and explained in a simple enough manner to make it into a singular blog post.</p>
 <p>Now this is certainly not a quick 5 minute read, but the goal is that this is a solid read to help you learn about Kerberos and the attacks associated with it, instead of having to use a bunch of resources to learn just a couple things here and there, or break your brain and read the 137 page <a href="https://www.ietf.org/rfc/rfc4120.txt">RFC4120</a>.</p>
 <p>On that note, I will be showing attacks from both Windows &amp; Linux.</p>
-<p>Performing Windows attacks requires dropping binaries on disk unless using a C2 framework which lets you use execute-assembly. I <strong>strongly</strong> recommend using a C2 framework if you want to do the Windows version of the attacks, but I show how to do it without it just in case. Also, when using Rubeus’ createnetonly command to import tickets into cmd.exe, a high-integrity shell will import it into your current session even while using /show, while a low integrity shell will spawn cmd.exe with the ticket imported into there.<br>
-<br>
+<p>Performing Windows attacks requires dropping binaries on disk unless using a C2 framework which lets you use execute-assembly. I <strong>strongly</strong> recommend using a C2 framework if you want to do the Windows version of the attacks, but I show how to do it without it just in case. Also, when using Rubeus’ createnetonly command to import tickets into cmd.exe, a high-integrity shell will import it into your current session even while using /show, while a low integrity shell will spawn cmd.exe with the ticket imported into there.</p>
 <p>Linux attacks will be done with my Kali Linux machine.</p>
 <hr>
 <h3 id="kerberos-background-information">Kerberos Background Information</h3>
@@ -124,7 +125,6 @@
 <li><strong>sname:</strong> Target service principal name (SPN) for the resulting ticket</li>
 <li><strong>padata:</strong> pre-authentication data</li>
 </ul>
-<hr>
 <h2 id="the-confusion-begins-—-dissecting-the-kerberos-authentication-protocol">The Confusion Begins — Dissecting the Kerberos Authentication Protocol</h2>
 <h3 id="krb_as_req-—-authentication-service-exchange-part-1">1) KRB_AS_REQ — Authentication Service Exchange Part 1</h3>
 <p>The first step of the kerberos protocol is the KRB_AS_REQ message.</p>
@@ -140,7 +140,7 @@ Components of an AS-REQ in a PCAP;</p>
 <p>Once the AS receives the client’s request for a TGT (AS-REQ), it will inspect the cleartext username, fetch their credentials, and attempt to decrypt the authenticator the user encrypted using those creds.</p>
 <p>If it successfully decrypted the authenticator, and the timestamp is recent, the AS will send the user an AS-REP message containing a temporary session key, and a TGT where then the user will be successfully authenticated.</p>
 <ul>
-<li>The TGT is basically a user’s identity card since it includes the user's authorization data.</li>
+<li>The TGT is basically a user’s identity card since it includes the user’s authorization data.</li>
 <li>By default is lasts for 8 hours before it expires.</li>
 <li>One temporary session key is placed into the TGT.</li>
 <li>The TGT is encrypted with the KDC’s key (krbtgt’s account password hash) so the user can’t tamper with it.</li>
@@ -212,7 +212,6 @@ Components of an AP-REQ; picture from HackTheBox</p>
 <p><img src="https://cdn-images-1.medium.com/max/716/1*cXck0i6AQeDGc_7FimYPdA.png" alt="https://cdn-images-1.medium.com/max/716/1*cXck0i6AQeDGc_7FimYPdA.png"></p>
 <p><img src="https://cdn-images-1.medium.com/max/716/1*mXwuDdlSPU9ROHQ9QCGWTQ.png" alt="https://cdn-images-1.medium.com/max/716/1*mXwuDdlSPU9ROHQ9QCGWTQ.png"><br>
 Contents of a TGT including the PAC;</p>
-<hr>
 <h2 id="abusing-the-kerberos-protocol-for-attacks">Abusing the Kerberos Protocol for Attacks</h2>
 <p>We finally made it past the steps of the Kerberos authentication protocol, and now we can begin the attacks. I do my best to cover the attacks from both Linux &amp; Windows.</p>
 <h3 id="user-enumeration--password-spraying">User Enumeration &amp; Password Spraying</h3>
@@ -333,7 +332,7 @@ getTGT.py -hashes 'LM:NT' testlab.com/bob@dc.ip
 <pre><code># You can use Rubeus
 Rubeus.exe asktgt /domain:testlab.com /user:bob /rc4:&lt;nt hash&gt; /nowrap
 </code></pre>
-<p><strong>OverPass The Key</strong>  is nearly identical to OverPass The Hash, except the password hash uses etype AES-128 (17) or AES-256 (18) instead of RC4 (23). This is useful when RC4 for pre-authentication is disabled for a user which is the case for users that are in the <code>Protected Users</code> security group.</p>
+<p><strong>OverPass The Key</strong> is nearly identical to OverPass The Hash, except the password hash uses etype AES-128 (17) or AES-256 (18) instead of RC4 (23). This is useful when RC4 for pre-authentication is disabled for a user which is the case for users that are in the <code>Protected Users</code> security group.</p>
 <p><strong>OverPass the Key in Linux:</strong></p>
 <pre><code># We can use impacket
 getTGT.py -aeskey &lt;aes256 or 128 hash&gt; testlab.com/bob@dc.ip
@@ -490,7 +489,7 @@ Rubeus.exe asktgt /domain:testlab.com /user:bob /aes256:&lt;aes256 hash&gt; /now
 <li>Control of another object that has an SPN (either have Administrator on the machine, or just create and join a computer account to the domain).</li>
 </ol>
 <p><strong>Abuse using control over an existing computer:</strong></p>
-<p>In this example, the existing computer we have SYSTEM on is WKSTN-2<span class="katex--inline"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">.</mi><mi>T</mi><mi>h</mi><mi>e</mi><mi>t</mi><mi>a</mi><mi>r</mi><mi>g</mi><mi>e</mi><mi>t</mi><mi>c</mi><mi>o</mi><mi>m</mi><mi>p</mi><mi>u</mi><mi>t</mi><mi>e</mi><mi>r</mi><mi>t</mi><mi>h</mi><mi>a</mi><mi>t</mi><mi>w</mi><mi>e</mi><mi>h</mi><mi>a</mi><mi>v</mi><mi>e</mi><mi>W</mi><mi>r</mi><mi>i</mi><mi>t</mi><mi>e</mi><mi>P</mi><mi>r</mi><mi>o</mi><mi>p</mi><mi>e</mi><mi>r</mi><mi>t</mi><mi>y</mi><mi>o</mi><mi>v</mi><mi>e</mi><mi>r</mi><mi>i</mi><mi>s</mi><mi>d</mi><mi>c</mi><mo>−</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">. The target computer that we have WriteProperty over is dc-2</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height: 0.88888em; vertical-align: -0.19444em;"></span><span class="mord">.</span><span style="margin-right: 0.13889em;" class="mord mathnormal">T</span><span class="mord mathnormal">h</span><span class="mord mathnormal">e</span><span class="mord mathnormal">t</span><span class="mord mathnormal">a</span><span style="margin-right: 0.02778em;" class="mord mathnormal">r</span><span style="margin-right: 0.03588em;" class="mord mathnormal">g</span><span class="mord mathnormal">e</span><span class="mord mathnormal">t</span><span class="mord mathnormal">co</span><span class="mord mathnormal">m</span><span class="mord mathnormal">p</span><span class="mord mathnormal">u</span><span class="mord mathnormal">t</span><span style="margin-right: 0.02778em;" class="mord mathnormal">er</span><span class="mord mathnormal">t</span><span class="mord mathnormal">ha</span><span style="margin-right: 0.02691em;" class="mord mathnormal">tw</span><span class="mord mathnormal">e</span><span class="mord mathnormal">ha</span><span style="margin-right: 0.03588em;" class="mord mathnormal">v</span><span class="mord mathnormal">e</span><span style="margin-right: 0.13889em;" class="mord mathnormal">W</span><span style="margin-right: 0.02778em;" class="mord mathnormal">r</span><span class="mord mathnormal">i</span><span class="mord mathnormal">t</span><span class="mord mathnormal">e</span><span style="margin-right: 0.13889em;" class="mord mathnormal">P</span><span class="mord mathnormal">ro</span><span class="mord mathnormal">p</span><span style="margin-right: 0.02778em;" class="mord mathnormal">er</span><span class="mord mathnormal">t</span><span class="mord mathnormal">yo</span><span style="margin-right: 0.03588em;" class="mord mathnormal">v</span><span style="margin-right: 0.02778em;" class="mord mathnormal">er</span><span class="mord mathnormal">i</span><span class="mord mathnormal">s</span><span class="mord mathnormal">d</span><span class="mord mathnormal">c</span><span class="mspace" style="margin-right: 0.222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right: 0.222222em;"></span></span><span class="base"><span class="strut" style="height: 0.64444em; vertical-align: 0em;"></span><span class="mord">2</span></span></span></span></span></p>
+<p>In this example, the existing computer we have SYSTEM on is WKSTN-2.ThetargetcomputerthatwehaveWritePropertyoverisdc−2.ThetargetcomputerthatwehaveWritePropertyoverisdc−2</p>
 <pre><code>1. # Before proceeding, make sure you have SYSTEM control of a machine account. In this example, it's WKSTN$
    Import-Module PowerView.ps1
 
@@ -547,7 +546,6 @@ powerpick Get-DomainComputer -Identity dc | Set-DomainObject -Clear msDS-Allowed
     # OR
     impacket-psexec &lt;target_ip&gt; -k -no-pass
 </code></pre>
-<hr>
 <h2 id="kerberos-ticket-forging-for-persistence">Kerberos Ticket Forging for Persistence</h2>
 <p>This section is about forging tickets for lateral movement and maintaining persistence.</p>
 <h3 id="silver-ticket">Silver Ticket</h3>
@@ -632,7 +630,6 @@ Ticket combinations from Zero-Point Security</p>
 3. # Now take the base64 TGT diamond ticket and pass it into createnetonly
    Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /domain:TESTLAB /username:Administrator /password:FakePass /ticket:&lt;TGT ticket&gt; /show
 </code></pre>
-<hr>
 <h2 id="additional-kerberos-attacks">Additional Kerberos Attacks</h2>
 <p>I will now be covering additional Kerberos Attacks like U2U &amp; Sapphire Tickets, Kerberoasting without Pre-Authentication, UnPAC the Hash, sAMAccountName Spoofing, and SPN-Jacking!</p>
 <h3 id="u2u">U2U</h3>
@@ -671,7 +668,6 @@ Ticket combinations from Zero-Point Security</p>
 <h3 id="spn-jacking">SPN-Jacking</h3>
 <h3 id="shadow-credentials">Shadow Credentials</h3>
 <h3 id="unpac-the-hash">UnPAC the Hash</h3>
-<hr>
 <h2 id="conclusion">Conclusion</h2>
 <p>Kerberos is certainly not an easy topic to grasp at first — it has lots of moving parts and terminology which make it difficult to understand. I created this blog with the goal of breaking down this complex protocol and make it simple enough for people wanting to learn more about how it works and the attacks associated with it. After reading this blog, you should have a solid grasp on Kerberos, and the ability to find and exploit many attacks from both Linux and Windows machines.</p>
 <h2 id="resources">Resources</h2>
@@ -705,6 +701,7 @@ Ticket combinations from Zero-Point Security</p>
 <ul>
 <li><a href="https://academy.hackthebox.com/module/25/section/137">https://academy.hackthebox.com/module/25/section/137</a></li>
 </ul>
+</div>
 </div>
 <!-- End of Post Content -->
 
