@@ -1,7 +1,4 @@
-h1::after {
-    border-bottom: 0px; /* Remove the underline specifically for h1 */
-}
 h1 {
   line-height: 0
-  margin: 1.8em 0;
+  margin;
 }
