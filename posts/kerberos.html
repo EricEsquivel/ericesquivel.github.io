@@ -86,9 +86,67 @@
 <div class="stackedit__html">
 
 <!-- Post Content -->
-<h2 id="the-last-kerberos-read-you’ll-ever-need">The Last Kerberos Read You’ll Ever Need</h2>
+<h1 id="the-last-kerberos-read-you’ll-ever-need">The Last Kerberos Read You’ll Ever Need</h2>
 <p>This is my post on the Kerberos authentication protocol that I composed from lots of different resources to help me understand the details of what exactly is being sent, while also keeping it at a high level. Hopefully this is a resource others can use to better understand the why’s and how’s of the Kerberos protocol and attacks against it. Everything is ordered in one place, split into sections, and explained in a simple enough manner to make it into a singular blog post.</p>
 <p>Now this is certainly not a quick 5 minute read, but the goal is that this is a solid resource to help you learn about Kerberos and the attacks associated with it, instead of having to use a bunch of resources to learn just a couple things here and there, or break your brain and read the 137 page <a href="https://www.ietf.org/rfc/rfc4120.txt">RFC4120</a>.</p>
+<ul>
+   <li>
+   <p><a href="https://ericesquivel.github.io/posts/kerberos#kerberos-background-information">Kerberos Background Information</a></p>
+   </li>
+   <li>
+   <p><a href="https://ericesquivel.github.io/posts/kerberos#the-confusion-begins-%E2%80%94-dissecting-the-kerberos-authentication-protocol">The Confusion Begins - Dissecting the Kerberos Authentication Protocol</a></p>
+   <ul>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#krb_as_req-%E2%80%94-authentication-service-exchange-part-1">KRB_AS_REQ</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#krb_as_rep-%E2%80%94-authentication-service-exchange-part-2">KRB_AS_REP</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#krb_tgs_req-%E2%80%94-ticket-granting-service-exchange-part-1">KRB_TGS_REQ</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#krb_tgs_rep-%E2%80%94-ticket-granting-service-exchange-part-2">KRB_TGS_REP</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#krb_ap_req-%E2%80%94-clientserver-exchange-part-1">KRB_AP_REQ</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#krb_ap_rep-%E2%80%94-clientserver-exchange-part-2">KRB_AP_REP</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#the-pac">The PAC</a></li>
+   </ul>
+   </li>
+   <li>
+   <p><a href="https://ericesquivel.github.io/posts/kerberos#abusing-the-kerberos-protocol-for-attacks">Abusing the Kerberos Protocol for Attacks</a></p>
+   <ul>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#user-enumeration--password-spraying">User Enumeration &amp; Password Spraying</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#as-rep-roasting">AS-REP Roasting</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#kerberoasting">Kerberoasting</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#overpass-the-hashkey">OverPass the Hash/Key</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#pass-the-certificate">Pass the Certificate</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#pass-the-ticketcache">Pass the Ticket/Cache</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#kerberos-delegation-attacks">Kerberos Delegation Attacks</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#unconstrained-delegation">Unconstrained Delegation</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#constrained-delegation">Constrained Delegation</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#resource-based-constrained-delegation">Resource-Based Constrained Delegation</a></li>
+   </ul>
+   </li>
+   <li>
+   <p><a href="https://ericesquivel.github.io/posts/kerberos#kerberos-ticket-forging-for-persistence">Kerberos Ticket Forging for Persistence</a></p>
+   <ul>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#silver-ticket">Silver Ticket</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#golden-ticket">Golden Ticket</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#diamond-ticket">Diamond Ticket</a></li>
+   </ul>
+   </li>
+   <li>
+   <p><a href="https://ericesquivel.github.io/posts/kerberos#additional-kerberos-attacks">Additional Kerberos Attacks</a></p>
+   <ul>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#u2u">U2U</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#sapphire-ticket">Sapphire Ticket</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#kerberoasting-without-pre-authentication">Kerberoasting without Pre-Authentication</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#spn-jacking">SPN-Jacking</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#shadow-credentials">Shadow Credentials</a></li>
+   <li><a href="https://ericesquivel.github.io/posts/kerberos#unpac-the-hash">UnPAC the Hash</a></li>
+   </ul>
+   </li>
+   <li>
+   <p><a href="https://ericesquivel.github.io/posts/kerberos#conclusion">Conclusion</a></p>
+   </li>
+   <li>
+   <p><a href="https://ericesquivel.github.io/posts/kerberos#resources">Resources</a></p>
+   </li>
+   </ul>
+<br>
 <p>On that note, I will be showing attacks from both Windows &amp; Linux.</p>
 <p>Performing Windows attacks requires dropping binaries on disk unless using a C2 framework which lets you use execute-assembly. I <strong>strongly</strong> recommend using a C2 framework if you want to do the Windows version of the attacks, but I show how to do it without it just in case. Also, when using Rubeus’ createnetonly command to import tickets into cmd.exe, a high-integrity shell will import it into your current session even while using /show, while a low integrity shell will spawn cmd.exe with the ticket imported into there.</p>
 <p>Linux attacks will be done with my Kali Linux machine.</p>
@@ -491,7 +549,7 @@ Rubeus.exe asktgt /domain:testlab.com /user:bob /aes256:&lt;aes256 hash&gt; /now
 <li>Control of another object that has an SPN (either have Administrator on the machine, or just create and join a computer account to the domain).</li>
 </ol>
 <p><strong>Abuse using control over an existing computer:</strong></p>
-<p>In this example, the existing computer we have SYSTEM on is WKSTN-2.ThetargetcomputerthatwehaveWritePropertyoverisdc−2.ThetargetcomputerthatwehaveWritePropertyoverisdc−2</p>
+<p>In this example, the existing computer we have SYSTEM on is WKSTN-2. The target computer that we have WriteProperty over is dc−2$.</p>
 <pre><code>1. # Before proceeding, make sure you have SYSTEM control of a machine account. In this example, it's WKSTN$
    Import-Module PowerView.ps1
 
