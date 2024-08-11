@@ -692,7 +692,7 @@ Ticket combinations from Zero-Point Security</p>
 </code></pre>
 <br>
 <h2 id="additional-kerberos-attacks">Additional Kerberos Attacks</h2>
-<p>I will now be covering additional Kerberos Attacks like U2U &amp; Sapphire Tickets, Kerberoasting without Pre-Authentication, SPN-Jacking, Shadow Credentials, and UnPAC the Hash!</p>
+<p>I will now be covering additional Kerberos attacks like Sapphire Tickets, Kerberoasting without Pre-Authentication, SPN-Jacking, Shadow Credentials, and UnPAC the Hash!</p>
 <h3 id="u2u">U2U</h3>
 <p>User-to-User (U2U) is a type of authentication exchange allows for a client to connect to a service that is not in possession of a long term secret key (like if a service is running as an unprivileged user and does not have access to system keys to decrypt the tickets). U2U aims to address this problem by allowing clients to request that service tickets are encrypted with the target service’s session key, instead of their normal key (user password hash).</p>
 <p><strong>How U2U Works:</strong></p>
@@ -709,7 +709,7 @@ Ticket combinations from Zero-Point Security</p>
 <p>Sapphire tickets are similar to Diamond tickets because the tickets are not completely forged, they are obtained after a request.</p>
 <p>Diamond tickets modify PACs on-the-fly to include arbitrary group IDs, chances are some detection software can detect discrepancies between a PAC’s values and actual AD relationships (e.g. a PAC indicates a user belongs to some groups when in fact it doesn’t).</p>
 <p>Sapphire tickets are a way of obtaining these tickets more stealthily by including a legitimate powerful user’s PAC in the ticket. There will be no discrepancy anymore between what’s in the PAC and what’s in Active Directory.</p>
-<p>We use S4U2Self + U2U to impersonate a user, while making the Service Ticket access our particular user and not a service.</p>
+<p>We can use S4U2Self + U2U to impersonate a user, while making the Service Ticket access our particular user and not a service.</p>
 <p>To perform the attack, first use a user to receive a TGT from a AS-REP, then use S4U2Self + U2U to generate a TGS-REQ with slightly different fields from normal to obtain a privileged user’s ticket:</p>
 <ol>
 <li>The <code>PA_FOR_USER</code> struct contains the impersonated user</li>
@@ -722,7 +722,7 @@ Ticket combinations from Zero-Point Security</p>
 <p><strong>Abuse in Linux</strong></p>
 <pre><code>1. # Let's go ahead and request our Sapphire Ticket
    # -aesKey and -nthash are both from bob's password, so do a secretsdump for bob
-impacket-ticketer -request -impersonate 'Administrator' -domain 'testlab.com' -user 'bob' -password 'bP@ssw0rd' -aesKey '298e43c5ace9fce374308cb211c14e1617a15ac1b0d02f49c91fe19495424489' -nthash 'b32c8073fee1de4bcce319e730b11252' -domain-sid 'S-1-5-21-2608137413-2884876175-3110901826' Administrator
+   impacket-ticketer -request -impersonate 'Administrator' -domain 'testlab.com' -user 'bob' -password 'bP@ssw0rd' -aesKey '298e43c5ace9fce374308cb211c14e1617a15ac1b0d02f49c91fe19495424489' -nthash 'b32c8073fee1de4bcce319e730b11252' -domain-sid 'S-1-5-21-2608137413-2884876175-3110901826' Administrator
 </code></pre>
 <p><img src="https://cdn-images-1.medium.com/max/716/1*cVUV9N99SL8YvdMJnw7sCA.png" alt="https://cdn-images-1.medium.com/max/716/1*cVUV9N99SL8YvdMJnw7sCA.png"></p>
 <h3 id="kerberoasting-without-pre-authentication">Kerberoasting without Pre-Authentication</h3>
