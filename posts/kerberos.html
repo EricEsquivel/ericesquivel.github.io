@@ -726,6 +726,37 @@ Ticket combinations from Zero-Point Security</p>
 </code></pre>
 <p><img src="https://cdn-images-1.medium.com/max/716/1*cVUV9N99SL8YvdMJnw7sCA.png" alt="https://cdn-images-1.medium.com/max/716/1*cVUV9N99SL8YvdMJnw7sCA.png"></p>
 <h3 id="kerberoasting-without-pre-authentication">Kerberoasting without Pre-Authentication</h3>
+<p>Before we get into the attack, I want to provide some more information about Kerberoasting.</p>
+<p>In the Kerberoasting section I explained that to Kerberoast a user, you use your TGT to request a service ticket from the TGS with a TGS-REQ containing the SPN of the service we want to access located in the sname field. This value of the sname field is called the “Principal Name”. According to <a href="https://datatracker.ietf.org/doc/html/rfc4120#section-6.2">RFC4120 section 6.2</a>, the Principal Name has multiple supported types.</p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*OG2Rzr0BMxScV13b1NPFdQ.png" alt=""></p>
+<p>By default, the “NT-PRINCIPAL” Name Type is used, which according to <a href="https://swarm.ptsecurity.com/kerberoasting-without-spns/">this blog by Arseniy</a>, it represents SPN and SAN formats. The Name Type field is shown right above the sname field in a packet capture. This makes what I said about Kerberoasting before true.</p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*6AiaMXfG6QEJo4QIYKor8A.png" alt=""></p>
+<p>However Arseniy also shows that the “NT-ENTERPRISE” Name Type is much more valuable because it supports multiple name formats.</p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*CdACkoUa2Vgh6k9onZh4bw.png" alt=""></p>
+<p>Picture is from <a href="https://www.semperis.com/blog/new-attack-paths-as-requested-sts/">this blog by Arseniy</a></p>
+<p>All we have to do is just specify the “NT-ENTERPRISE” Name Type in the field to Kerberoast a user using a samaccountname which was implemented in Rubeus and Impacket, and is why they support supplying username wordlists, as explained in the blog.</p>
+<p><strong>Kerberoasting without Pre-Authentication</strong></p>
+<p>This is a concept where we can request Service Tickets from the AS instead of from the TGS. Typically we send an AS-REQ to the AS with the sname field containing the krbtgt account which results in a TGT. And if pre-auth isn’t required (AS-REP Roasting) then we don’t have to suply credentials to obtain the TGT. If there is a user with no pre-auth required, then we can actually just change the sname in a normal AS-REQ from the krbtgt service account SPN, to any other service account’s SPN. And if we choose NT-ENTERPRISE as the Name Type, then we can just supply a samaccountname as the sname value instead of a full SPN. This basically means we can Kerberoast using an AS-REP Roastable account even if we don’t know the account’s credentials.</p>
+<p>Using what we’ve learned, we can use this methodology:</p>
+<ol>
+<li>
+<p>Generate a username wordlist filled with samaccountnames (&amp; SPNs if you want). Using the wordlist, identify AS-REP Roastable accounts.</p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*05IkGvOWnuEBO9hxyQdJqA.png" alt=""></p>
+</li>
+<li>
+<p>While trying to crack the obtained hash, we can also use the wordlist and simultaneously kerberoast without pre-authentication through the AS-REP Roastable account to obtain service hashes. After obtaining the service hashes, attempt to crack those.</p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*BvFWRQJoFNHXyuVWvHbHKw.png" alt=""></p>
+</li>
+</ol>
+<p><strong>Abuse in Linux:</strong></p>
+<pre class=" language-bash"><code class="prism  language-bash">1. <span class="token comment"># Create wordlist of samaccountnames (usernames)</span>
+
+2. <span class="token comment"># AS-REP Roast using the wordlist</span>
+   GetNPUsers.py -dc-ip 192.168.108.133 testlab.com/ -no-pass -usersfile users.txt
+	 
+3. <span class="token comment"># Now using the obtained samaccountname, specify this user 'alice' for the next command, and still supply the username wordlist.</span>
+   impacket-GetUserSPNs -no-preauth <span class="token string">"alice"</span> -usersfile users.txt -dc-host 192.168.108.133 testlab.com/
+</code></pre>
 <h3 id="spn-jacking">SPN-Jacking</h3>
 <h3 id="shadow-credentials">Shadow Credentials</h3>
 <h3 id="unpac-the-hash">UnPAC the Hash</h3>
