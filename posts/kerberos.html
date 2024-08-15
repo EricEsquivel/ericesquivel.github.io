@@ -168,8 +168,8 @@
 <p>Clients obtain tickets called TGTs from the Kerberos Key Distribution Center (KDC), specifically the AS, and they present these tickets called Ticket Granting Tickets (TGTs) to the TGS where they receive a Service Ticket. The client can then send the Service Ticket to the target server. The server will inspect the Service Ticket, and then reply back to the client allowing access.</p>
 <p>The Authentication Service (AS) issues TGTs for later connecting to the TGS in its domain or any trusted domain. Before a client can ask for a ticket to another computer, it must request a TGT from the AS in the client’s domain. “The TGT can be reused until it expires, but the first access to any domain’s ticket-granting service always requires a trip to the authentication service in the client’s account domain.”</p>
 <p>Like TCP has syn syn/ack ack, Kerberos authentication has 1. AS_REQ, 2. AS_REP, 3. TGS_REQ, 4. TGS_REP, 5. AP_REQ, 6. AP_REP</p>
-<p><img src="https://cdn-images-1.medium.com/max/716/1*Mmz5wy4eC0HK0m0FAw_a1g.png" alt="https://cdn-images-1.medium.com/max/716/1*Mmz5wy4eC0HK0m0FAw_a1g.png"></p>
-<p><img src="https://cdn-images-1.medium.com/max/716/1*-Fooncxwpm63GmQKQIU7kA.png" alt="https://cdn-images-1.medium.com/max/716/1*-Fooncxwpm63GmQKQIU7kA.png"></p>
+<p><img src="/img/kerberosimages/kerberossteps.png"></p>
+<p><img src="/img/kerberosimages/kerberospcap.png"></p>
 <p><strong>The Kerberos Double Hop Problem</strong></p>
 <p>In the case of NTLM authentication, if a machine was compromised and the NTLM hash was stolen, an attacker could access anything that the user account had access to with a Pass-The-Hash attack. However, Kerberos tickets do not contain a user’s password and will specify the machine to which the ticket grants access.</p>
 <p>This is why the <a href="https://posts.specterops.io/offensive-lateral-movement-1744ae62b14f?gi=f925425e7a42">Double Hop Problem</a> exists when accessing machines remotely via WinRM. When a non-Kerberos protocol is utilized to access a machine remotely, it is possible to use that connection to access other machines as that user without re-prompting for authentication because the NTLM password hash is tied to that session. With Kerberos authentication, credentials must be specific for every machine they want to access because there is no password.</p>
@@ -188,11 +188,11 @@
 <p>The first step of the kerberos protocol is the KRB_AS_REQ message.</p>
 <p>In this AS_REQ message, the user will send a request to the AS for a ticket called the Ticket Granting Ticket (TGT) and they must also prove their identity through something called pre-authentication.</p>
 <p>To perform pre-authentication and prove their identity, the user will send an authenticator which is the current timestamp encrypted with the user’s key (password hash as DES, RC4, AES128 or AES256), and their username in cleartext so the KDC knows who they’re dealing with.</p>
-<p>(Technically, the first AS-REQ packet is sent without authentication data to maintain backwards compatibility. It will succeed only if the <code>DONT_REQ_PREAUTH</code> flag in the Active Directory for the target account is set. Nowadays accounts require pre-auth by default. Once it fails, it it will send another AS-REQ with the pre-auth info)</p>
-<p><img src="https://cdn-images-1.medium.com/max/716/1*9hZKhly2HwWLG5RMgDeoqA.png" alt="https://cdn-images-1.medium.com/max/716/1*9hZKhly2HwWLG5RMgDeoqA.png"><br>
+<p>(Technically, the first AS-REQ packet is sent without authentication data to maintain backwards compatibility. It will succeed only if the <code>DONT_REQ_PREAUTH</code> flag in the Active Directory for the target account is set. Nowadays accounts require pre-auth by default. Once it fails, it it will send another AS-REQ with the pre-auth info).</p>
+<p><img src="/img/kerberosimages/asreq.png"><br>
 Components of an AS-REQ; picture from HackTheBox</p>
 <p>What this picture above doesn’t show is the TGT request for the krbtgt SPN; It only shows the pre-authentication. But just remember, an AS-REQ request contains the TGT request, and the pre-authentication data.</p>
-<p><img src="https://cdn-images-1.medium.com/max/716/1*YjF6zXjhWiWxPjC9qJhsCw.png" alt="https://cdn-images-1.medium.com/max/716/1*YjF6zXjhWiWxPjC9qJhsCw.png"><br>
+<p><img src="/img/kerberosimages/asreqpcap.png"><br>
 Components of an AS-REQ in a PCAP;</p>
 <h3 id="krb_as_rep-—-authentication-service-exchange-part-2">2) KRB_AS_REP — Authentication Service Exchange Part 2</h3>
 <p>Once the AS receives the client’s request for a TGT (AS-REQ), it will inspect the cleartext username, fetch their credentials, and attempt to decrypt the authenticator the user encrypted using those creds.</p>
@@ -444,8 +444,8 @@ Rubeus.exe asktgt /domain:testlab.com /user:bob /aes256:&lt;aes256 hash&gt; /now
 <p>Unconstrained delegation is the most dangerous delegation type. It was the only type of delegation available in Windows Server 2000. It allows a service to impersonate a user to access <strong>any other</strong> service.</p>
 <p>Enabling unconstrained delegation requires Domain Admin/Enterprise Admin privileges, specifically having <code>SeEnableDelegationPrivilege</code> is required to perform this action.</p>
 <p>To enable unconstrained delegation on an account, navigate to the Delegation tab and select <code>Trust this computer for delegation to any service (Kerberos only)</code>. A service account <strong>cannot</strong> modify itself to add this option.</p>
-<p><img src="https://cdn-images-1.medium.com/max/716/1*sV0MP-oWyQQnknVzy6mKGw.png" alt="https://cdn-images-1.medium.com/max/716/1*sV0MP-oWyQQnknVzy6mKGw.png"></p>
-<p>Enabling Unconstrained Delegation</p>
+<p><img src="https://cdn-images-1.medium.com/max/716/1*sV0MP-oWyQQnknVzy6mKGw.png" alt="https://cdn-images-1.medium.com/max/716/1*sV0MP-oWyQQnknVzy6mKGw.png">
+Enabling Unconstrained Delegation</p>
 <p>When this setting is enabled, the <code>TRUSTED_FOR_DELEGATION</code> property flag is set on the UserAccountControl (UAC) attribute. By default, the DC has this set, so don’t worry about it.</p>
 <p><strong>How does it really work though?</strong></p>
 <p>If this flag is set on a machine account and a user makes a TGS request to access this service, the TGS will add a copy of the user’s TGT into the Service Ticket. This way, the machine account can extract this TGT copy, cache it in memory, and use it to make TGS requests to the DC as that user and obtain Service Tickets to other services, like the database in our example. So, if we compromise a machine account with unconstrained delegation, we can steal the TGTs of users from when they authenticated and impersonate them. If unconstrained delegation is not enabled, only the Service Ticket will be stored in memory.</p>
@@ -491,7 +491,7 @@ Rubeus.exe asktgt /domain:testlab.com /user:bob /aes256:&lt;aes256 hash&gt; /now
 <p>When a user requests a Service Ticket to service1 with Constrained Delegation and <code>Use Kerberos Only</code> is selected, this does not happen. Instead, the user will just give service1 a normal Service Ticket. In order for service1 to impersonate the user to access another different service like service2, service1 will send a special <code>TGS-REQ</code> to obtain a Service Ticket for service2. This is called S4U2Proxy. This is different from a normal <code>TGS-REQ</code> because 2 things are added to the request:</p>
 <ul>
 <li>The <code>additional-tickets</code> field will contain a copy of the Service Ticket the user sent to service1 (this ticket must be marked forwardable).</li>
-<li>The <code>cname-in-addl-tkt</code> flag will be set to indicate to the Domain Controller that it should not use the server information but the ticket information in <code>additional tickets</code>, i.e., the user’s information the server wants to impersonate</li>
+<li>The <code>cname-in-addl-tkt</code> flag will be set to indicate to the Domain Controller that it should not use the server information but the ticket information in <code>additional-tickets</code>, i.e., the user’s information the server wants to impersonate.</li>
 </ul>
 <p><strong>Constrained Delegation with Use Any Authentication Protocol</strong></p>
 <p>The above is fine for Kerberos because service1 will have a Service Ticket to itself from the user to put into the <code>additional-tickets</code> field when it performs S4U2Proxy to service2. But what if a user authenticated to service1 without a Service Ticket, like in the case they used NTLM authentication instead? Now what? This is where S4U2Self comes in.</p>
