@@ -401,7 +401,7 @@ getTGT.py -aeskey &lt;aes256 or 128 hash&gt; testlab.com/bob@dc.ip
 Rubeus.exe asktgt /domain:testlab.com /user:bob /aes256:&lt;aes256 hash&gt; /nowrap
 </code></pre>
 <h3 id="pass-the-certificate">Pass the Certificate</h3>
-<p>Pass the Certificate is another way to obtain a TGT from the KDC as a user where you use a X.509 certificate instead of a hash (OverPass the Hash) or a key (OverPass the Key). Typically, Kerberos uses symmetric encryption types like DES, RC4, AES128, and AES256 for pre-authentication to provide a TGT. If there is a CA (Certificate Authority) on the domain, like if the DC has ADCS installed and set up, then you can perform pre-authentication with asymmetric keys called certificates. This method is called PKINIT, or Public Key Cryptography for Initial Authentication in Kerberos.</p>
+<p>Pass the Certificate is another way to obtain a TGT from the KDC as a user where you use a X.509 certificate instead of a hash (OverPass the Hash) or a key (OverPass the Key) to generate the authenticator. Typically, Kerberos uses symmetric encryption types like DES, RC4, AES128, and AES256 for pre-authentication to provide a TGT. If there is a CA (Certificate Authority) on the domain, like if the DC has ADCS installed and set up, then you can perform pre-authentication with asymmetric keys called certificates. This method is called PKINIT, or Public Key Cryptography for Initial Authentication in Kerberos.</p>
 <p><strong>Pass the Certificate in Linux:</strong></p>
 <pre><code>1. # We can use certipy to request a TGT
    certipy auth -pfx "PATH_TO_PFX_CERT" -dc-ip 'dc-ip' -username 'user' -domain 'domain'
@@ -817,7 +817,7 @@ Ticket combinations from Zero-Point Security</p>
 <li>create an RSA key pair</li>
 <li>create an X.509 certificate configured with the public key</li>
 <li>create a <a href="https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/de61eb56-b75f-4743-b8af-e9be154b47af">KeyCredential</a> structure featuring the raw public key and add it to the <code>msDS-KeyCredentialLink</code> attribute</li>
-<li>authenticate using PKINIT with the certificate and private key</li>
+<li>authenticate using PKINIT with the PEM certificate and private key, or the PFX certificate.</li>
 </ul>
 <p><strong>Abuse in Linux:</strong></p>
 <pre class=" language-bash"><code class="prism  language-bash">1. <span class="token comment"># Enumerate principals with write access over another principal's msDS-KeyCredentialLink attribute</span>
