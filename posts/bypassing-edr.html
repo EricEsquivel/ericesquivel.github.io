@@ -94,13 +94,21 @@
 <h1 id="how-i-bypassed-crowdstrike-falcon--microsoft-defender-for-endpoint-edr">How I bypassed CrowdStrike Falcon &amp; Microsoft Defender for Endpoint EDR</h1>
 <p>For the past couple of months, I have been diving into malware development in C with the goal of better understanding how offensive security professionals get past security solutions like EDR. Endpoint Detection and Response (EDR) solutions are critical for protecting organizations from malicious activities.</p>
 <p>In this post, I’ll share my journey and the specific methods I used to achieve this. The goal is to not go in depth and provide the exact code I used to bypass it, but instead to help guide others in researching about the different techniques necessary to evade some EDR products.</p>
-<p><img src="/img/EDRassets/MDE.mp4" alt=""></p>
-<p><img src="/img/EDRassets/Falcon.mp4" alt=""></p>
+<video width="320" height="240" controls>
+    <source src="/img/EDRassets/MDE.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video> 
+<video width="320" height="240" controls>
+    <source src="/img/EDRassets/Falcon.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video> 
+<br>
 <h2 id="what-is-edr">What is EDR?</h2>
 <p>Endpoint Detection and Response (EDR) are advanced security solutions that monitor for suspicious activity and respond to threats on endpoints.</p>
 <p>They consist of 2 parts: a user-mode application and a kernel-mode driver. Both parts gather information by collecting data on events such as system logs, network traffic, inter-process communications (IPCs), RPC calls, authentication attempts, and user activity. EDRs also analyze, correlate data and can automatically respond to these threats by isolating endpoints or terminating suspicious processes.</p>
 <p>All the data and alerts collected are sent and logged in a dashboard or console which can be used for monitoring and threat hunting.</p>
 <p><img src="/img/EDRassets/dashboard.png" alt="dashboard.png"></p>
+<br>
 <h2 id="how-edrs-detect-you">How EDRs Detect You</h2>
 <p>EDRs can monitor processes using the methods below:</p>
 <ul>
@@ -113,6 +121,7 @@
 <li>Network Connections and Indicators of Compromise</li>
 </ul>
 <p>Bypassing EDRs requires multiple techniques because they use multiple methods to monitor processes. It is also important to know that applying bypass techniques may let your loader avoid detection, but not the C2 payload in use. This could be due to well known anomalies associated with the C2: the C2 executes a noisy command such as spawning cmd.exe, the C2 uses recognizable indicators like Cobalt Strike’s default pipe names, and loading Sliver’s AMSI bypass.</p>
+<br>
 <h2 id="bypassing-falcon--mde">Bypassing Falcon &amp; MDE</h2>
 <p>I decided to perform my testing on CrowdStrike Falcon and Microsoft Defender for Endpoint (MDE). I didn’t have to do bypass techniques for all of the methods mentioned in the previous section, therefore the techniques I will talk about below is specifically what I used to bypass specifically Falcon and MDE.</p>
 <h3 id="technique-1---custom-functions--dynamic-linking">Technique 1 - Custom Functions &amp; Dynamic Linking</h3>
@@ -200,7 +209,7 @@ USTRING	Key <span class="token operator">=</span> <span class="token punctuation
 <p>A lot of these functions I don’t even use, yet here they are, making my binary more suspicious. To get past this, you need to remove the CRT library which will get rid of all the DLLs and unused functions from your Import Address Table (IAT). The downside to this is that your need to make sure you have custom implementations of the removed functions. To be so real, Google and ChatGPT are your best friends here. They can cook something up that you can slightly modify to get working with your code quickly.</p>
 <p>I also suggest removing debug information and remember to disable security checks because you will get errors if you leave security checks enabled and have the CRT library removed.</p>
 <p>Additionally I wanted to compare Falcon and MDE here. Falcon is a lot more sensitive to entropy than MDE. For example I stored my shellcode in the resource section of my binary and Falcon flagged it immediately, resulting in me having to stage the payload. However, MDE didn’t care when I had 100kb of encrypted shellcode in my resource section. It said absolutely nothing suspicious going on here!</p>
-<h3 id="wrapping-up">Wrapping Up</h3>
+<h2 id="wrapping-up">Wrapping Up</h3>
 <p>The combination of these techniques resulted in me bypassing both Microsoft Defender for Endpoint and CrowdStrike Falcon for initial access and obtaining command execution for simple commands without generating any alerts.</p>
 <p>Of course I still have a lot to learn as I dive deeper into malware development but this has been a great journey so far. I also need to develop my own post-exploitation tools to avoid detection when trying to perform extremely malicious actions like dumping LSASS.</p>
 <p>I really hope this blog was able to explain some topics at a high level, and maybe it also helps someone understand the different types of techniques necessary to bypass EDR, specifically Falcon &amp; MDE.</p>
