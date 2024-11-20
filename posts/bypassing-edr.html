@@ -92,6 +92,7 @@
 
     <!-- Post Content -->
 <h1 id="how-i-bypassed-crowdstrike-falcon--microsoft-defender-for-endpoint-edr">How I bypassed CrowdStrike Falcon &amp; Microsoft Defender for Endpoint EDR</h1>
+<hr>
 <p>For the past couple of months, I have been diving into malware development in C with the goal of better understanding how offensive security professionals get past security solutions like EDR. Endpoint Detection and Response (EDR) solutions are critical for protecting organizations from malicious activities.</p>
 <p>In this post, I’ll share my journey and the specific methods I used to achieve this. The goal is to not go in depth and provide the exact code I used to bypass it, but instead to help guide others in researching about the different techniques necessary to evade some EDR products.</p>
 <video width="680" height="480" controls>
@@ -102,7 +103,7 @@
     <source src="/img/EDRassets/Falcon.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video> 
-<br>
+<br><br>
 <h2 id="what-is-edr">What is EDR?</h2>
 <p>Endpoint Detection and Response (EDR) are advanced security solutions that monitor for suspicious activity and respond to threats on endpoints.</p>
 <p>They consist of 2 parts: a user-mode application and a kernel-mode driver. Both parts gather information by collecting data on events such as system logs, network traffic, inter-process communications (IPCs), RPC calls, authentication attempts, and user activity. EDRs also analyze, correlate data and can automatically respond to these threats by isolating endpoints or terminating suspicious processes.</p>
