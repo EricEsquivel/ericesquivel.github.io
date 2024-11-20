@@ -91,7 +91,7 @@
 
 
     <!-- Post Content -->
-<h1 id="how-i-bypassed-crowdstrike-falcon--microsoft-defender-for-endpoint-edr">How I bypassed CrowdStrike Falcon &amp; Microsoft Defender for Endpoint EDR</h1>
+<h1 id="bypassing-edr">Bypassing EDR</h1>
 <hr>
 <p>For the past couple of months, I have been diving into malware development in C with the goal of better understanding how offensive security professionals get past security solutions like EDR. Endpoint Detection and Response (EDR) solutions are critical for protecting organizations from malicious activities.</p>
 <p>In this post, I’ll share my journey and the specific methods I used to achieve this. The goal is to not go in depth and provide the exact code I used to bypass it, but instead to help guide others in researching about the different techniques necessary to evade some EDR products.</p>
@@ -123,8 +123,8 @@
 </ul>
 <p>Bypassing EDRs requires multiple techniques because they use multiple methods to monitor processes. It is also important to know that applying bypass techniques may let your loader avoid detection, but not the C2 payload in use. This could be due to well known anomalies associated with the C2: the C2 executes a noisy command such as spawning cmd.exe, the C2 uses recognizable indicators like Cobalt Strike’s default pipe names, and loading Sliver’s AMSI bypass.</p>
 <br>
-<h2 id="bypassing-falcon--mde">Bypassing Falcon &amp; MDE</h2>
-<p>I decided to perform my testing on CrowdStrike Falcon and Microsoft Defender for Endpoint (MDE). I didn’t have to do bypass techniques for all of the methods mentioned in the previous section, therefore the techniques I will talk about below is specifically what I used to bypass specifically Falcon and MDE.</p>
+<h2 id="bypassing-falcon--mde">Bypassing EDR</h2>
+<p>I decided to perform my testing on CrowdStrike Falcon and Microsoft Defender for Endpoint (MDE). I didn’t have to do bypass techniques for all of the methods mentioned in the previous section, therefore the techniques I will talk about below is specifically what I used to bypass these products.</p>
 <h3 id="technique-1---custom-functions--dynamic-linking">Technique 1 - Custom Functions &amp; Dynamic Linking</h3>
 <p>Using custom functions and dynamically linking functions is critical to the success of your loader. You do not want to have suspicious imported functions in your binary’s IAT because EDR like Falcon and Elastic are extremely sensitive to this. They will see imports associated with common TTPs and flag your binary instantly. This also helps prevent you from potentially executing hooked functions. I used a custom GetProcAddress to manually retrieve the address to different functions in ntdll.dll, and a custom GetModuleHandle to retrieve a handle to ntdll.dll so that I don’t have to execute those hooked functions. Implementing the functions manually also lets you better understand how they work, and lets you circumvent userland hooking.</p>
 <p>For a custom GetModuleHandle, you can get the first item in the linked list containing all of the imported DLLs in your binary by going through PEB→Ldr to obtain the <a href="https://learn.microsoft.com/en-us/windows/win32/api/winternl/ns-winternl-peb_ldr_data#remarks">PEB_LDR_DATA structure</a>. This structure contains the InMemoryOrderModuleList.Flink member which will give you a pointer to the first element of the doubly-linked list. This pointer will point to a <a href="https://www.nirsoft.net/kernel_struct/vista/LDR_DATA_TABLE_ENTRY.html">LDR_DATA_TABLE_ENTRY structure</a> which you can use to get the next item in the list by using the InInitializationOrderLinks.Flink member if defined or the Reserved2[0] member of the structure if undefined. Keep looping until the FullDllName.Buffer member of the structure matches the target DLL name to get a handle to.</p>
