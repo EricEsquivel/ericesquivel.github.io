@@ -98,7 +98,6 @@
     <source src="/img/EDRassets/MDE.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
-<br>
 <video width="680" height="480" controls>
     <source src="/img/EDRassets/Falcon.mp4" type="video/mp4">
   Your browser does not support the video tag.
@@ -150,7 +149,7 @@ MyNtAllocateVirtualMemory PROC
 MyNtAllocateVirtualMemory ENDP
 
 </code></pre>
-<p>I personally used Indirect Syscalls for allocating memory, writing memory, execution delay, unhooking, etc.</p>
+<p>I personally used Indirect Syscalls for allocating memory, writing memory, execution delay, unhooking, etc. Also quick tip: Falcon picks up on SysWhispers3 generated code while MDE doesn't. So that's why I had to do it manually in order to bypass Falcon.</p>
 <h3 id="technique-3---anti-sandbox">Technique 3 - Anti-Sandbox</h3>
 <p>Anti-Sandbox techniques are malware author attempts to detect isolated, malware analyzing environments. A lot of techniques include checking the hardware specs of the sandbox, fast forwards, specific installed software, number of running processes, checking hostname, CPU temperature, user activity with mouse clicks, opened web browser tabs, etc. A friend of mine and I put as many public techniques we could find and implement into a single binary and uploaded it to VirusTotal to see the results of the different techniques. On a majority of the sandboxes, almost none of the public techniques worked against these sandboxes. There was 1 we found worked. I decided to dive deeper on my own, while my friend also dug deeper on his own for work. I came across a very low level function to detect VMs I could only find barely documented in a single random website, but I got it to work flawlessly. The downside is that only detecting for a VM isn’t a good idea because what if clients are running their machines on thin clients and connecting to a VDI?</p>
 <p><strong>Digging Deeper</strong></p>
@@ -210,6 +209,7 @@ USTRING	Key <span class="token operator">=</span> <span class="token punctuation
 <p>A lot of these functions I don’t even use, yet here they are, making my binary more suspicious. To get past this, you need to remove the CRT library which will get rid of all the DLLs and unused functions from your Import Address Table (IAT). The downside to this is that your need to make sure you have custom implementations of the removed functions. To be so real, Google and ChatGPT are your best friends here. They can cook something up that you can slightly modify to get working with your code quickly.</p>
 <p>I also suggest removing debug information and remember to disable security checks because you will get errors if you leave security checks enabled and have the CRT library removed.</p>
 <p>Additionally I wanted to compare Falcon and MDE here. Falcon is a lot more sensitive to entropy than MDE. For example I stored my shellcode in the resource section of my binary and Falcon flagged it immediately, resulting in me having to stage the payload. However, MDE didn’t care when I had 100kb of encrypted shellcode in my resource section. It said absolutely nothing suspicious going on here!</p>
+<br>
 <h2 id="wrapping-up">Wrapping Up</h3>
 <p>The combination of these techniques resulted in me bypassing both Microsoft Defender for Endpoint and CrowdStrike Falcon for initial access and obtaining command execution for simple commands without generating any alerts.</p>
 <p>Of course I still have a lot to learn as I dive deeper into malware development but this has been a great journey so far. I also need to develop my own post-exploitation tools to avoid detection when trying to perform extremely malicious actions like dumping LSASS.</p>
