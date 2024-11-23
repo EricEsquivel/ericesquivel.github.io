@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Detecting Active Directory Attacks</title>
+
+    <!-- stackedit.io -->
+    <link href="https://stackedit.io/style.css" rel="stylesheet"> 
+    
+
+    <!-- Bootstrap Core CSS -->
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link href="/css/clean-blog.min.css" rel="stylesheet">
+
+    <!-- Custom Fonts -->
+    <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/css'>
+
+    <link href="/css/style2.css" rel="stylesheet"> 
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/index.html">Eric Esquivel's Blog</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/index.html">Home</a>
+                    </li>
+                    <li>
+                        <a href="/assets/resume.pdf">Resume</a>
+                    </li>
+                    <li>
+                        <a href="https://github.com/EricEsquivel">GitHub</a>
+                    </li>
+                </ul>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <!-- Page Header -->
+    <!-- Set your background image for this header on the line below. -->
+    <header class="intro-header" style="background-image: url('/img/redandblack.png')">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                    <div class="site-heading">
+                        <h1 font color="#000000">Eric Esquivel's Blog</h1>
+                        <hr class="small">
+                        <span class="subheading"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+<div class="stackedit">
+<div class="stackedit__html">
+
+
+<!-- Post Content -->
+<h1 id="detecting-active-directory-attacks">Detecting Active Directory Attacks</h1>
+<h2 id="introduction">Introduction</h2>
+<p>This is the first part of the Red vs Blue detection engineering lab, made by Eric and Dylan. Here we document the TTPs for numerous tools and develop detection queries.</p>
+<p>For this milestone Eric &amp; Dylan have built detections in Elastic for 7 common Active Directory attacks by using numerous tools such as the ELK stack, Sysmon, Event Viewer, Wireshark and tools for running the AD attacks such as Mimikatz, and the Impacket suite.</p>
+<p>We built detections for the following: password spraying, AS-REP Roasting, Kerberoasting, Kerberoasting without Pre-Authentication, Anomalous TGT and Service Ticket requests, DCSyncs, and Pass the Hash.</p>
+<p>Previous knowledge of these attacks is highly suggested to better understand our approach to the detections. We built our detections with the goal of detecting specific tools, and just general suspicious events.</p>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ul>
+<li>Detecting Password Spraying</li>
+<li>Detecting AS-REP Roasting</li>
+<li>Detecting Anomalous TGT request</li>
+<li>Detecting Kerberoasting</li>
+<li>Detecting Kerberoasting Without Preauthentication</li>
+<li>Detecting DCSyncs
+<ul>
+<li>Mimikatz</li>
+<li>Netexec</li>
+</ul>
+</li>
+<li>Detecting Pass-The-Hash</li>
+</ul>
+<h2 id="detecting-password-spraying">Detecting Password Spraying</h2>
+<p>We were able to build detections for password spraying attacks against domain users from the Kerbrute tool when running the following command:</p>
+<p><code>./kerbrute passwordspray usernames.txt "bP@ssw0rd" -d testlab.local --dc dc.testlab.local</code></p>
+<p>When successful, 2 Kerberos TGT requests will be generated.</p>
+<p>The first TGT request will have the Client Address as just as the IP <code>192.168.108.129</code>, while the second TGT request will have the Client Address as <code>::ffff:192.168.108.129</code> which is completely normal looking.</p>
+<p>However, both event logs will have a Ticket Options of <code>0x10</code> which is <strong>very</strong> suspicious as it is supposed to be <code>0x40810010</code> or <code>0x40810000</code>.</p>
+<p>We can alert on either of these a non <code>::ffff:ip</code> Client Address and a Ticket Options of <code>0x10</code>.</p>
+<p>1st generated log - Event ID 4768:</p>
+<pre class=" language-vbnet"><code class="prism  language-vbnet">A Kerberos authentication ticket <span class="token punctuation">(</span>TGT<span class="token punctuation">)</span> was requested.
+
+Account Information<span class="token punctuation">:</span>
+    Account <span class="token keyword">Name</span><span class="token punctuation">:</span>		bob
+    Supplied Realm <span class="token keyword">Name</span><span class="token punctuation">:</span>	TESTLAB.LOCAL
+    User ID<span class="token punctuation">:</span>			TESTLAB\\bob
+
+Service Information<span class="token punctuation">:</span>
+    Service <span class="token keyword">Name</span><span class="token punctuation">:</span>		krbtgt
+    Service ID<span class="token punctuation">:</span>		TESTLAB\\krbtgt
+
+Network Information<span class="token punctuation">:</span>
+    Client Address<span class="token punctuation">:</span>		<span class="token number">192.168</span><span class="token number">.108.129</span>
+    Client Port<span class="token punctuation">:</span>		<span class="token number">35136</span>
+
+Additional Information<span class="token punctuation">:</span>
+    Ticket Options<span class="token punctuation">:</span>		<span class="token number">0</span>x10
+    Result Code<span class="token punctuation">:</span>		<span class="token number">0</span>x0
+    Ticket Encryption <span class="token keyword">Type</span><span class="token punctuation">:</span>	<span class="token number">0</span>x12
+    Pre<span class="token operator">-</span>Authentication <span class="token keyword">Type</span><span class="token punctuation">:</span>	<span class="token number">2</span>
+...
+
+</code></pre>
+<p>2nd generated log - Event ID 4768:</p>
+<pre class=" language-vbnet"><code class="prism  language-vbnet">A Kerberos authentication ticket <span class="token punctuation">(</span>TGT<span class="token punctuation">)</span> was requested.
+
+Account Information<span class="token punctuation">:</span>
+    Account <span class="token keyword">Name</span><span class="token punctuation">:</span>		bob
+    Supplied Realm <span class="token keyword">Name</span><span class="token punctuation">:</span>	TESTLAB.LOCAL
+    User ID<span class="token punctuation">:</span>			TESTLAB\\bob
+
+Service Information<span class="token punctuation">:</span>
+    Service <span class="token keyword">Name</span><span class="token punctuation">:</span>		krbtgt
+    Service ID<span class="token punctuation">:</span>		TESTLAB\\krbtgt
+
+Network Information<span class="token punctuation">:</span>
+    Client Address<span class="token punctuation">:</span>		<span class="token punctuation">:</span><span class="token punctuation">:</span>ffff<span class="token punctuation">:</span><span class="token number">192.168</span><span class="token number">.108.129</span>
+    Client Port<span class="token punctuation">:</span>		<span class="token number">49052</span>
+
+Additional Information<span class="token punctuation">:</span>
+    Ticket Options<span class="token punctuation">:</span>		<span class="token number">0</span>x10
+    Result Code<span class="token punctuation">:</span>		<span class="token number">0</span>x0
+    Ticket Encryption <span class="token keyword">Type</span><span class="token punctuation">:</span>	<span class="token number">0</span>x12
+    Pre<span class="token operator">-</span>Authentication <span class="token keyword">Type</span><span class="token punctuation">:</span>	<span class="token number">2</span>
+...
+
+</code></pre>
+<p><strong>Rule Name:</strong></p>
+<p><strong>Kerbrute Password Spray</strong></p>
+<p><strong>Detection Query:</strong></p>
+<p><code>winlog.event_data.TicketOptions : "0x10" and winlog.event_id : "4768"</code></p>
+<p><strong>Rule Description:</strong></p>
+<p><strong>This is a potential password spraying attack from Kerbrute.</strong></p>
+<h2 id="detecting-as-rep-roasting">Detecting AS-REP Roasting</h2>
+<p>We were able to build detections for AS-REP Roasting attacks from the Impacket tool, GetNPUsers, when running the following command:</p>
+<p><code>impacket-GetNPUsers -no-pass -usersfile npusers.txt testlab.local/</code></p>
+<p>Using GetNPUsers to AS-REP Roast is interesting. It supplies an etype (encryption type) of <code>0x17</code> which is 23 in decimal meaning RC4 encryption. This is not normal as most environments will use AES256 which is <code>0x12</code> (18). Additionally, GetNPUsers supplies a Ticket Options of <code>0x50800000</code> which is also not normal as previously discussed. Lastly, we can see the Pre-Authentication type of <code>0</code> meaning a TGT was requested for the account without pre auth data (as-rep roast).</p>
+<p>Using all of these together, we can easily detect an AS-REP Roast attack from Impacket’s GetNPUsers.</p>
+<p>Generated log - Event ID</p>
+<pre class=" language-vbnet"><code class="prism  language-vbnet">A Kerberos authentication ticket <span class="token punctuation">(</span>TGT<span class="token punctuation">)</span> was requested.
+
+Account Information<span class="token punctuation">:</span>
+    Account <span class="token keyword">Name</span><span class="token punctuation">:</span>		alice
+    Supplied Realm <span class="token keyword">Name</span><span class="token punctuation">:</span>	TESTLAB.LOCAL
+    User ID<span class="token punctuation">:</span>			TESTLAB\\alice
+
+Service Information<span class="token punctuation">:</span>
+    Service <span class="token keyword">Name</span><span class="token punctuation">:</span>		krbtgt
+    Service ID<span class="token punctuation">:</span>		TESTLAB\\krbtgt
+
+Network Information<span class="token punctuation">:</span>
+    Client Address<span class="token punctuation">:</span>		<span class="token punctuation">:</span><span class="token punctuation">:</span>ffff<span class="token punctuation">:</span><span class="token number">192.168</span><span class="token number">.108.129</span>
+    Client Port<span class="token punctuation">:</span>		<span class="token number">44884</span>
+
+Additional Information<span class="token punctuation">:</span>
+    Ticket Options<span class="token punctuation">:</span>		<span class="token number">0</span>x50800000
+    Result Code<span class="token punctuation">:</span>		<span class="token number">0</span>x0
+    Ticket Encryption <span class="token keyword">Type</span><span class="token punctuation">:</span>	<span class="token number">0</span>x17
+    Pre<span class="token operator">-</span>Authentication <span class="token keyword">Type</span><span class="token punctuation">:</span>	<span class="token number">0</span>
+...
+
+</code></pre>
+<p><strong>Rule Name:</strong> AS-REP Roasting</p>
+<p><strong>Detection Query:</strong></p>
+<p><code>winlog.event_data.TicketOptions :"0x50800000" and winlog.event_data.TicketEncryptionType : "0x17" and winlog.event_data.PreAuthType : "0" and winlog.event_id : "4768"</code></p>
+<p><strong>Rule Description:</strong> This is a potential AS-REP Roasting attack from impacket-GetNPUsers.</p>
+<p>However if an attacker is not a skid and knows how their tool works, they can easily modify this since Impacket is open source. Another approach will be to generate a honey pot account with a super secure password (something like 60+ characters to make it uncrackable), and make it look like a normal account that has logged in a couple times or changed its password. Then we can build a detection rule to check if a TGT is ever requested for this user. If so, then we caught the attacker.</p>
+<p><strong>Rule 2 Name:</strong> AS-REP Roast Honey Pot</p>
+<p><strong>Detection Query:</strong></p>
+<p><code>winlog.event_id : "4768" and user.name : "alice"</code></p>
+<p><strong>Rule Description:</strong> AS-REP Roasting Honey Pot user was detected.</p>
+<h2 id="detecting-anomalous-tgt-request">Detecting Anomalous TGT request</h2>
+<p>We can detect when Impacket requests a TGT and Service Ticket. The Service Ticket request log is the same log generated when running Kerberoasting so that will be shown in that section, however the TGT request logs generated from Get-TGT and Kerberoasting are different so it is split up.</p>
+<p><code>impacket-getTGT testlab.local/bob:'bP@ssw0rd'</code></p>
+<p>Using Impacket’s getTGT requests a TGT with ticket options of <code>0x50800000</code> which is anomalous.</p>
+<p>This 4768 log is generated from running getTGT and also the 4768 log from getST.</p>
+<pre class=" language-vbnet"><code class="prism  language-vbnet">A Kerberos authentication ticket <span class="token punctuation">(</span>TGT<span class="token punctuation">)</span> was requested.
+
+Account Information<span class="token punctuation">:</span>
+    Account <span class="token keyword">Name</span><span class="token punctuation">:</span>		bob
+    Supplied Realm <span class="token keyword">Name</span><span class="token punctuation">:</span>	TESTLAB.LOCAL
+    User ID<span class="token punctuation">:</span>			TESTLAB\\bob
+
+Service Information<span class="token punctuation">:</span>
+    Service <span class="token keyword">Name</span><span class="token punctuation">:</span>		krbtgt
+    Service ID<span class="token punctuation">:</span>		TESTLAB\\krbtgt
+
+Network Information<span class="token punctuation">:</span>
+    Client Address<span class="token punctuation">:</span>		<span class="token punctuation">:</span><span class="token punctuation">:</span>ffff<span class="token punctuation">:</span><span class="token number">192.168</span><span class="token number">.108.129</span>
+    Client Port<span class="token punctuation">:</span>		<span class="token number">56732</span>
+
+Additional Information<span class="token punctuation">:</span>
+    Ticket Options<span class="token punctuation">:</span>		<span class="token number">0</span>x50800000
+    Result Code<span class="token punctuation">:</span>		<span class="token number">0</span>x0
+    Ticket Encryption <span class="token keyword">Type</span><span class="token punctuation">:</span>	<span class="token number">0</span>x12
+    Pre<span class="token operator">-</span>Authentication <span class="token keyword">Type</span><span class="token punctuation">:</span>	<span class="token number">2</span>
+...
+
+</code></pre>
+<p><strong>Rule Name:</strong> A TGT was requested with Impacket</p>
+<p><strong>Detection Query:</strong></p>
+<p><code>winlog.event_id : "4768" and winlog.event_data.TicketOptions : "0x50800000" and winlog.event_data.TicketEncryptionType : "0x12" and winlog.event_data.PreAuthType : "2"</code></p>
+<p><strong>Rule Description:</strong></p>
+<p>This log is the result of Impacket requesting a TGT, most likely with impacket-GetTGT. This allows attackers to request TGTs likely to be used with Pass-The-Ticket (PTT).</p>
+<h2 id="detecting-kerberoasting">Detecting Kerberoasting</h2>
+<p>We were able to build detections for Kerberoasting attacks from the Impacket tool, GetUserSPNs:</p>
+<p><code>impacket-GetUserSPNs testlab.local/bob:'bP@ssw0rd' -request</code></p>
+<p>When using GetUserSPNs to obtain both a TGT and then the service tickets, the event logs of 4768 &amp; 4769 are incredibly anomalous and easily detectable.</p>
+<p>Impacket will make the TGT ****request (event ID 4768) will be generated with a Ticket Encryption Type: <code>0x17</code> (RC4) and Ticket Options: <code>0x50800000</code>.</p>
+<p>It will <strong>also</strong> make the service ticket requests (event ID 4769) with a Ticket Encryption Type: <code>0x17</code> (RC4) and Ticket Options: <code>0x40810010</code>. (This 4769 log also looks exactly the same as the log generated from running getST, though the 4768 log from getST looks exactly like getTGT instead of the 4768 from GetUserSPNs).</p>
+<p>Impacket will make the service ticket have an RC4 etype to make it easier to crack, but im not sure why they would also do the same for the TGT request. Seeing both of these logs is highly suspicious and most likely the result of running GetUserSPNs with the -request flag.</p>
+<p>Note: This log does not match the 4768 log generated from getTGT or the 4768 from getST; it is unique.</p>
+<pre class=" language-vbnet"><code class="prism  language-vbnet">A Kerberos authentication ticket <span class="token punctuation">(</span>TGT<span class="token punctuation">)</span> was requested.
+
+Account Information<span class="token punctuation">:</span>
+    Account <span class="token keyword">Name</span><span class="token punctuation">:</span>		bob
+    Supplied Realm <span class="token keyword">Name</span><span class="token punctuation">:</span>	TESTLAB.LOCAL
+    User ID<span class="token punctuation">:</span>			TESTLAB\\bob
+
+Service Information<span class="token punctuation">:</span>
+    Service <span class="token keyword">Name</span><span class="token punctuation">:</span>		krbtgt
+    Service ID<span class="token punctuation">:</span>		TESTLAB\\krbtgt
+
+Network Information<span class="token punctuation">:</span>
+    Client Address<span class="token punctuation">:</span>		<span class="token punctuation">:</span><span class="token punctuation">:</span>ffff<span class="token punctuation">:</span><span class="token number">192.168</span><span class="token number">.108.129</span>
+    Client Port<span class="token punctuation">:</span>		<span class="token number">51172</span>
+
+Additional Information<span class="token punctuation">:</span>
+    Ticket Options<span class="token punctuation">:</span>		<span class="token number">0</span>x50800000
+    Result Code<span class="token punctuation">:</span>		<span class="token number">0</span>x0
+    Ticket Encryption <span class="token keyword">Type</span><span class="token punctuation">:</span>	<span class="token number">0</span>x17
+    Pre<span class="token operator">-</span>Authentication <span class="token keyword">Type</span><span class="token punctuation">:</span>	<span class="token number">2</span>
+...
+
+</code></pre>
+<p><strong>Rule Name:</strong> Kerberoasting with Impacket - TGT request</p>
+<p><strong>Detection Query:</strong></p>
+<p><code>winlog.event_id : "4768" and winlog.event_data.TicketOptions : "0x50800000" and winlog.event_data.TicketEncryptionType : "0x17" and winlog.event_data.PreAuthType : "2"</code></p>
+<p><strong>Rule Description:</strong> This log is the 4768 log generated from Kerberoasting with Impacket. The 4769 log that is generated matches with the log generated from impacket-GetST, however this 4768 does not match with impacket-GetTGT. Seeing this alert and then the ”Kerberoasting with Impacket - ST request” alert (the next alert shown below) afterwards is indicative of Kerberoasting with Impacket.</p>
+<p><strong>Kerberoasting Detection Rule 2</strong></p>
+<p>Note: This log matches with the 4769 that getST generates, so we can build a singular rule that detects both of these.</p>
+<pre class=" language-vbnet"><code class="prism  language-vbnet">A Kerberos service ticket was requested.
+
+Account Information<span class="token punctuation">:</span>
+    Account <span class="token keyword">Name</span><span class="token punctuation">:</span>		bob@TESTLAB.LOCAL
+    Account Domain<span class="token punctuation">:</span>		TESTLAB.LOCAL
+    Logon GUID<span class="token punctuation">:</span>		{<span class="token number">94545896</span><span class="token operator">-</span>fc6e<span class="token operator">-</span>e45f<span class="token operator">-</span><span class="token number">9932</span><span class="token operator">-</span>ce3d48fdfa23}
+
+Service Information<span class="token punctuation">:</span>
+    Service <span class="token keyword">Name</span><span class="token punctuation">:</span>		bob
+    Service ID<span class="token punctuation">:</span>		TESTLAB\\bob
+
+Network Information<span class="token punctuation">:</span>
+    Client Address<span class="token punctuation">:</span>		<span class="token punctuation">:</span><span class="token punctuation">:</span>ffff<span class="token punctuation">:</span><span class="token number">192.168</span><span class="token number">.108.129</span>
+    Client Port<span class="token punctuation">:</span>		<span class="token number">51190</span>
+
+Additional Information<span class="token punctuation">:</span>
+    Ticket Options<span class="token punctuation">:</span>		<span class="token number">0</span>x40810010
+    Ticket Encryption <span class="token keyword">Type</span><span class="token punctuation">:</span>	<span class="token number">0</span>x17
+    Failure Code<span class="token punctuation">:</span>		<span class="token number">0</span>x0
+    Transited Services<span class="token punctuation">:</span>	<span class="token operator">-</span>
+...
+
+</code></pre>
+<p><strong>Rule Name:</strong> Kerberoasting with Impacket - ST request</p>
+<p><strong>Detection Query:</strong></p>
+<p><code>winlog.event_id : "4769" and winlog.event_data.TicketOptions : "0x40810010" and winlog.event_data.TicketEncryptionType : "0x17"</code></p>
+<p><strong>Rule Description:</strong></p>
+<p>This log is the 4769 log generated from Keberoasting with Impacket. Note that this 4769 log that is generated matches with the log generated from impacket-getST (so no extra alert needed for that), however this 4768 does not match with impacket-GetTGT. Seeing this alert after the “Kerberoasting with Impacket - TGT request” alert is indicative of Kerberoasting with Impacket.</p>
+<h2 id="detecting-kerberoasting-without-preauthentication">Detecting Kerberoasting Without Preauthentication</h2>
+<p>This is just like AS-REP roasting, except attackers are able to use the user that does not require pre-authentication to request service tickets to other SPNs by simply changing the target SPN from krbtgt to another SPN. This allows for kerberoasting without credentials. The resulting generated log looks like an AS-REP Roasting generated log except the “Service Name” will not be krbtgt.</p>
+<p><code>impacket-GetUserSPNs -no-preauth "alice" -usersfile usernames -dc-host 192.168.108.139 testlab.local/</code></p>
+<p>Here is the TGT request, event ID 4768. We can flag on all the stuff from AS-REP Roasting, as well as the service name not being krbtgt.</p>
+<pre class=" language-vbnet"><code class="prism  language-vbnet">A Kerberos authentication ticket <span class="token punctuation">(</span>TGT<span class="token punctuation">)</span> was requested.
+
+Account Information<span class="token punctuation">:</span>
+    Account <span class="token keyword">Name</span><span class="token punctuation">:</span>		alice
+    Supplied Realm <span class="token keyword">Name</span><span class="token punctuation">:</span>	TESTLAB.LOCAL
+    User ID<span class="token punctuation">:</span>			TESTLAB\\alice
+
+Service Information<span class="token punctuation">:</span>
+    Service <span class="token keyword">Name</span><span class="token punctuation">:</span>		bob
+    Service ID<span class="token punctuation">:</span>		TESTLAB\\bob
+
+Network Information<span class="token punctuation">:</span>
+    Client Address<span class="token punctuation">:</span>		<span class="token punctuation">:</span><span class="token punctuation">:</span>ffff<span class="token punctuation">:</span><span class="token number">192.168</span><span class="token number">.108.129</span>
+    Client Port<span class="token punctuation">:</span>		<span class="token number">47502</span>
+
+Additional Information<span class="token punctuation">:</span>
+    Ticket Options<span class="token punctuation">:</span>		<span class="token number">0</span>x50800000
+    Result Code<span class="token punctuation">:</span>		<span class="token number">0</span>x0
+    Ticket Encryption <span class="token keyword">Type</span><span class="token punctuation">:</span>	<span class="token number">0</span>x17
+    Pre<span class="token operator">-</span>Authentication <span class="token keyword">Type</span><span class="token punctuation">:</span>	<span class="token number">0</span>
+...
+
+</code></pre>
+<p><strong>Rule Name:</strong> Kerberoasting Without Pre-Authentication</p>
+<p><strong>Detection Query:</strong></p>
+<p><code>winlog.event_id : "4768" and winlog.event_data.TicketOptions : "0x50800000" and winlog.event_data.PreAuthType : "0" and not service.name : "krbtgt"</code></p>
+<p><strong>Rule Description:</strong> This log is the result of kerberoasting without pre-authentication using Impacket. This attack allows for obtaining service tickets without authenticating to the domain.</p>
+<h2 id="detecting-dcsyncs">Detecting DCSyncs</h2>
+<p>We can detect DCSync attacks from both Mimikatz and Netexec.</p>
+<p>Mimikatz has 1 method of performing a DCSync. You have to specify the user</p>
+<p>Netexec has 3 methods of DCSync. You can specify the user like Mimikatz’s method, you can use ntdsutil.exe, or you can use Volume Shadow Copy Service (VSS).</p>
+<h3 id="detecting-mimikatz’s-dcsync"><strong>Detecting Mimikatz’s DCSync</strong></h3>
+<p><code>.\\mimikatz.exe "lsadump::dcsync /user:"krbtgt" exit</code></p>
+<p>To detect Mimikatz, we can look at the event logs it generates. In the event logs we can look at 1. the account name, and 2. the GUIDs for the type of replication.</p>
+<p>A typical sync between domain controllers will generate a single event log 4662. Here are the 2 logs generated from 2 domain controllers in their own domain. Notice it’s only 1 log for each DC, and the account name is the domain controller machine account, and note the GUIDs in the properties field.</p>
+<p><img src="/img/detectadpics/normaldcsync.png" alt="normaldcsync.png"></p>
+<p>However, running a DCSync attack with Mimikatz will always generate 4 logs with event code ID 4662 “<strong>An operation was performed on an object”.</strong></p>
+<p><img src="/img/detectadpics/mimikatzdcsync1.png" alt="mimikatzdcsync1.png"></p>
+<ol>
+<li>
+<p><strong>Account Name</strong></p>
+<p>If we were a Domain Administrator user when we run a DCSync attack, we can see the Account Name would be anomalous because it’s supposed to be a Domain Controller machine account performing a sync, not a user account. Now you could elevate to system as a domain controller and then run a DCSync attack which would make the account name look normal. So this is why we also flag the GUIDs as shown below.</p>
+<p><img src="/img/detectadpics/mimikatzdcsync2.png" alt="mimikatzdcsync2.png"></p>
+</li>
+<li>
+<p><strong>GUIDs</strong></p>
+<p>Next is flagging the GUIDs. As mentioned before, Mimikatz will generate 4 logs. Logs 1 &amp; 2 will look the same and have the same GUIDs. It will have a GUID of <code>1131f6aa-9c07-11d1-f79f-00c04fc2dcd2</code> which is <em>DS-Replication-Get-Changes.</em></p>
+<p><img src="/img/detectadpics/mimikatzdcsync3.png" alt="mimikatzdcsync3.png"></p>
+<p><img src="/img/detectadpics/mimikatzdcsync4.png" alt="mimikatzdcsync4.png"></p>
+<p>Log 3 will look very different, however. It will not have a GUID beginning with 1131f6a and instead will have <code>89e95b76-444d-4c62-991a-0facbeda640c</code> which is <em>DS-Replication-Get-Changes-In-Filtered-Set</em>.</p>
+<p><img src="/img/detectadpics/mimikatzdcsync5.png" alt="mimikatzdcsync5.png"></p>
+<p>Log 4 will look very similar to Logs 1 &amp; 2, but it will have a slightly different GUID. It will have a GUID of <code>1131f6ad-9c07-11d1-f79f-00c04fc2dcd2</code> which is <em>DS-Replication-Get-Changes-All</em>.</p>
+<p><img src="/img/detectadpics/mimikatzdcsync6.png" alt="mimikatzdcsync6.png"></p>
+</li>
+</ol>
+<p><strong>Bonus Notes</strong></p>
+<p>When performing a DCSync attack from outside of a domain controller, packets will be sent over the DCERPC, EPM, and DRSUAPI protocols.</p>
+<p><img src="/img/detectadpics/mimikatzdcsync7.png" alt="mimikatzdcsync7.png"></p>
+<p><strong>However</strong>, if you execute a DCSync attack while on a domain controller, it will perform everything locally with the domain controller and no packets with the protocols mentioned above will be sent.</p>
+<h3 id="detecting-netexec’s-dcsync"><strong>Detecting Netexec’s DCSync</strong></h3>
+<p>There are 3 methods of performing a dcsync with netexec. 1. Using drsuapi to sync a single user, 2. ntdsutil.exe 3. vss.</p>
+<ol>
+<li>
+<p><strong>Drsuapi to sync a single user</strong></p>
+<p>The command to DCSync a single user with Netexec over the Drsuapu protocol is:</p>
+<p><code>nxc smb 192.168.108.139 -u Administrator -d testlab.local -p 'P@ssw0rd' --ntds --user krbtgt</code></p>
+<p><img src="/img/detectadpics/nxcdcsync1.png" alt="nxcdcsync1.png"></p>
+<p>When using netexec to dump a specific user, it was generate 3 event id 4662 logs. The first 2 will have a normal GUID of <code>1131f6aa-9c07-11d1-f79f-00c04fc2dcd2</code>, which is <em>DS-Replication-Get-Changes</em>.</p>
+<p><img src="/img/detectadpics/nxcdcsync2.png" alt="nxcdcsync2.png"></p>
+<p><img src="/img/detectadpics/nxcdcsync3.png" alt="nxcdcsync3.png"></p>
+<p>However the third generated log will have a GUID of <code>1131f6ad-9c07-11d1-f79f-00c04fc2dcd2</code> which is <em>DS-Replication-Get-Changes-All</em>.</p>
+<p><img src="/img/detectadpics/nxcdcsync4.png" alt="nxcdcsync4.png"></p>
+<p>Again we can look for non domain controller machine accounts too, just like the Mimikatz detection.</p>
+</li>
+<li>
+<p><strong>ntdsutil.exe</strong></p>
+<p>Netexec can perform a DCSync by using the LOLBIN (living off the land binary) ntdsutil.exe. ntdsutil.exe is not a common utility run on the environment. It does not blend in with day to day activities.</p>
+<p><code>nxc smb 192.168.1.100 -u UserName -p 'PASSWORDHERE' -M ntdsutil</code></p>
+<p><img src="/img/detectadpics/nxcdcsync5.png" alt="nxcdcsync5.png"></p>
+<p><img src="/img/detectadpics/nxcdcsync6.png" alt="nxcdcsync6.png"></p>
+<p>This is the chain of events when running when running the -M ntdsutil command. To detect this we can look for process creation with event id 1 and the process.command_line as any of the below.</p>
+<pre class=" language-c"><code class="prism  language-c">cmd<span class="token punctuation">.</span>exe <span class="token operator">/</span>Q <span class="token operator">/</span>c powershell <span class="token string">"ntdsutil.exe 'ac i ntds' 'ifm' 'create full C:\\Windows\\Temp\\172963876' q q"</span> <span class="token number">1</span><span class="token operator">&gt;</span> \\Windows\\Temp\\QuGPmj <span class="token number">2</span><span class="token operator">&gt;</span><span class="token operator">&amp;</span><span class="token number">1</span>
+powershell <span class="token string">"ntdsutil.exe 'ac i ntds' 'ifm' 'create full C:\\Windows\\Temp\\172963876' q q"</span>
+<span class="token string">"C:\\Windows\\system32\\ntdsutil.exe"</span> <span class="token string">"ac i ntds"</span> ifm <span class="token string">"create full C:\\Windows\\Temp\\172963876"</span> q q
+cmd<span class="token punctuation">.</span>exe <span class="token operator">/</span>Q <span class="token operator">/</span>c rmdir <span class="token operator">/</span>s <span class="token operator">/</span>q C<span class="token punctuation">:</span>\\Windows\\Temp\\<span class="token number">172963876</span> <span class="token number">1</span><span class="token operator">&gt;</span> \\Windows\\Temp\\vofITR <span class="token number">2</span><span class="token operator">&gt;</span><span class="token operator">&amp;</span><span class="token number">1</span>
+
+</code></pre>
+<p>The first command executes the second which executes the third. The third created a directory called ‘172963876’ in C:\Windows\Temp and standard out was sent to a random file called vofITR with the following content below.</p>
+<p><img src="/img/detectadpics/nxcdcsync7.png" alt="nxcdcsync7.png"></p>
+<p>This file then gets deleted with the rmdir command, and another file gets created in its place. Additionally, the ‘172963876’ directory contains the ntds.dit and the SECURITY and SYSTEM registry keys. This entire directory will be deleted shortly after.</p>
+<p><img src="/img/detectadpics/nxcdcsync8.png" alt="nxcdcsync8.png"></p>
+<p>After the command is finished running, we will have the .tmp file and the new file with no extensions remaining. Both of these will have no contents in them.</p>
+<p><img src="/img/detectadpics/nxcdcsync9.png" alt="nxcdcsync9.png"></p>
+<p>Lastly, there will be lots of event id 4799 logs generated on the domain controller. (182 from my testing to be exact) with the process executable of either C:\Windows\System32\ntdsutil.exe or C:\Windows\System32\VSSVC.exe.</p>
+<p><img src="/img/detectadpics/nxcdcsync10.png" alt="nxcdcsync10.png"></p>
+<p>We can build another alert for this.</p>
+</li>
+<li>
+<p><strong>Volume Shadow Copy Service (VSS)</strong></p>
+<p>Lastly Netexec has an option to dump ntds.dit with the volume shadow copy service (VSS) using the following command:</p>
+<p><code>nxc smb 192.168.108.139 -u 'Administrator' -d testlab.local -p 'P@ssw0rd' --ntds vss</code></p>
+<p><img src="/img/detectadpics/nxcdcsync11.png" alt="nxcdcsync11.png"></p>
+<p>Running this command will generate 2 logs. One event id <code>4904</code> and one <code>4905</code>. The process executable will be <code>C:\\Windows\\System32\\VSSVC.exe</code>.</p>
+<p><img src="/img/detectadpics/nxcdcsync12.png" alt="nxcdcsync12.png"></p>
+<p><img src="/img/detectadpics/nxcdcsync13.png" alt="nxcdcsync13.png"></p>
+<p>Netexec will run this command on the box:</p>
+<pre class=" language-c"><code class="prism  language-c">C<span class="token punctuation">:</span>\\Windows\\system32\\cmd<span class="token punctuation">.</span>exe <span class="token operator">/</span>Q <span class="token operator">/</span>c echo C<span class="token punctuation">:</span>\\Windows\\system32\\cmd<span class="token punctuation">.</span>exe <span class="token operator">/</span>C vssadmin list shadows <span class="token operator">/</span><span class="token keyword">for</span><span class="token operator">=</span>C<span class="token punctuation">:</span> <span class="token operator">^</span><span class="token operator">&gt;</span> C<span class="token punctuation">:</span>\\Windows\\Temp\\__output <span class="token operator">&gt;</span> C<span class="token punctuation">:</span>\\Windows\\TEMP\\execute<span class="token punctuation">.</span>bat <span class="token operator">&amp;</span> C<span class="token punctuation">:</span>\\Windows\\system32\\cmd<span class="token punctuation">.</span>exe <span class="token operator">/</span>Q <span class="token operator">/</span>c C<span class="token punctuation">:</span>\\Windows\\TEMP\\execute<span class="token punctuation">.</span>bat <span class="token operator">&amp;</span> del C<span class="token punctuation">:</span>\\Windows\\TEMP\\execute<span class="token punctuation">.</span>bat
+
+</code></pre>
+<p>Then it will also run this command to copy the the shadow copy to C:\Windows\Temp</p>
+<pre class=" language-c"><code class="prism  language-c">C<span class="token punctuation">:</span>\\Windows\\system32\\cmd<span class="token punctuation">.</span>exe  <span class="token operator">/</span>C copy \\\\<span class="token operator">?</span>\\GLOBALROOT\\Device\\HarddiskVolumeShadowCopy23\\Windows\\NTDS\\ntds<span class="token punctuation">.</span>dit C<span class="token punctuation">:</span>\\Windows\\Temp\\yDBdCgmM<span class="token punctuation">.</span>tmp 
+
+</code></pre>
+<p>We can build a command line detection with the process command lines shown above and event code 1</p>
+<p><img src="/img/detectadpics/nxcdcsync14.png" alt="nxcdcsync14.png"></p>
+</li>
+</ol>
+<p><strong>Final DCSync detections:</strong></p>
+<ol>
+<li>
+<p><strong>Rule Name:</strong> Single User DCSync - Mimikatz or Netexec</p>
+<p><strong>Detection Query:</strong></p>
+<p><code>event.code:"4662" and (not message:"*1131f6aa-9c07-11d1-f79f-00c04fc2dcd2*" or user.name !: "*$")</code></p>
+<p><strong>Rule Description:</strong> This alert is the result of an event log id 4662 DCSync directory replication that doesn’t come from a machine account name, OR has a GUID in the properties not equal to <code>1131f6aa-9c07-11d1-f79f-00c04fc2dcd2</code></p>
+</li>
+<li>
+<p><strong>Rule Name:</strong> Netexec Ntdsutil DCSync Module - Anomalous Event Logs</p>
+<p><strong>Detection Query:</strong></p>
+<p><code>event.code:"4799" and (winlog.event_data.CallerProcessName:"C:\\\\Windows\\\\System32\\\\ntdsutil.exe" or winlog.event_data.CallerProcessName:"C:\\\\Windows\\\\System32\\\\VSSVC.exe")</code></p>
+<p><strong>Rule Description:</strong> This alert is the result of detected event logs that align with Netexec’s ntdsutil module to perform a DCSync attack by looking for event id 4799 with the process executable name of C:\Windows\System32\ntdsutil.exe or C:\Windows\System32\VSSVC.exe</p>
+</li>
+<li>
+<p><strong>Rule Name:</strong> Netexec Ntdsutil DCSync Module - Command Line Detection</p>
+<p><strong>Detection Query:</strong></p>
+<p><code>event.code:"1" and ((message:"*cmd.exe /Q /c powershell \\"ntdsutil.exe 'ac i ntds' 'ifm' 'create full C:\\\\Windows\\\\Temp\\\\*" and message:" q q\\" 1&gt; \\\\Windows\\\\Temp\\\\*" and message:"*2&gt;&amp;1*") or (message:"*powershell \\"ntdsutil.exe 'ac i ntds' 'ifm' 'create full C:\\\\Windows\\\\Temp\\\\*" and message:"*' q q\\"*") or (message:"*\\"C:\\\\Windows\\\\system32\\\\ntdsutil.exe\\" \\"ac i ntds\\" ifm \\"create full C:\\\\Windows\\\\Temp\\\\*" and message:"*\\"q q") or (message:"*cmd.exe /Q /c rmdir /s /q C:\\\\Windows\\\\Temp\\\\*" and "*1&gt; \\\\Windows\\\\Temp\\\\*" and "*2&gt;&amp;1*"))</code></p>
+<p><strong>Rule Description:</strong> This is another alert as a result of Netexec’s ntdsutil module to perform a DCSync attack by looking for process creation with event id 1 and the process.command_line as any of the below:</p>
+<pre class=" language-c"><code class="prism  language-c">cmd<span class="token punctuation">.</span>exe <span class="token operator">/</span>Q <span class="token operator">/</span>c powershell <span class="token string">"ntdsutil.exe 'ac i ntds' 'ifm' 'create full C:\\Windows\\Temp\\*' q q"</span> <span class="token number">1</span><span class="token operator">&gt;</span> \\Windows\\Temp\\<span class="token operator">*</span> <span class="token number">2</span><span class="token operator">&gt;</span><span class="token operator">&amp;</span><span class="token number">1</span>
+powershell <span class="token string">"ntdsutil.exe 'ac i ntds' 'ifm' 'create full C:\\Windows\\Temp\\*' q q"</span>
+<span class="token string">"C:\\Windows\\system32\\ntdsutil.exe"</span> <span class="token string">"ac i ntds"</span> ifm <span class="token string">"create full C:\\Windows\\Temp\\*"</span> q q
+cmd<span class="token punctuation">.</span>exe <span class="token operator">/</span>Q <span class="token operator">/</span>c rmdir <span class="token operator">/</span>s <span class="token operator">/</span>q C<span class="token punctuation">:</span>\\Windows\\Temp\\<span class="token operator">*</span> <span class="token number">1</span><span class="token operator">&gt;</span> \\Windows\\Temp\\<span class="token operator">*</span> <span class="token number">2</span><span class="token operator">&gt;</span><span class="token operator">&amp;</span><span class="token number">1</span>
+
+</code></pre>
+</li>
+<li>
+<p><strong>Rule Name:</strong> Netexec Ntds VSS Option - Command Line Detection</p>
+<p><strong>Detection Query:</strong></p>
+<p><code>event.code:"1" and (message:"*C:\\\\Windows\\\\system32\\\\cmd.exe /Q /c echo C:\\\\Windows\\\\system32\\\\cmd.exe /C vssadmin list shadows /for=C: ^&gt; C:\\\\Windows\\\\Temp\\\\__output &gt; C:\\\\Windows\\\\TEMP\\\\execute.bat &amp; C:\\\\Windows\\\\system32\\\\cmd.exe /Q /c C:\\\\Windows\\\\TEMP\\\\execute.bat &amp; del C:\\\\Windows\\\\TEMP\\\\execute.bat*" or message:"*C:\\\\Windows\\\\system32\\\\cmd.exe /Q /c C:\\\\Windows\\\\TEMP\\\\execute.bat*" or message:"*C:\\\\Windows\\\\system32\\\\cmd.exe /C vssadmin list shadows /for=C:*" or message:"*vssadmin list shadows /for=C:*" or message:"*C:\\\\Windows\\\\system32\\\\vssvc.exe*" or (message:"*C:\\\\Windows\\\\system32\\\\cmd.exe /Q /c echo C:\\\\Windows\\\\system32\\\\cmd.exe /C copy \\\\\\\\?\\\\GLOBALROOT\\\\Device\\\\HarddiskVolumeShadowCopy23\\\\Windows\\\\NTDS\\\\ntds.dit C:\\\\Windows\\\\Temp\\\\*" and message:"*C:\\\\Windows\\\\Temp\\\\__output &gt; C:\\\\Windows\\\\TEMP\\\\execute.bat &amp; C:\\\\Windows\\\\system32\\\\cmd.exe /Q /c C:\\\\Windows\\\\TEMP\\\\execute.bat &amp; del C:\\\\Windows\\\\TEMP\\\\execute.bat*") or message:"*C:\\\\Windows\\\\system32\\\\cmd.exe /Q /c C:\\\\Windows\\\\TEMP\\\\execute.bat*" or message:"*C:\\\\Windows\\\\system32\\\\cmd.exe /C copy \\\\\\\\?\\\\GLOBALROOT\\\\Device\\\\HarddiskVolumeShadowCopy23\\\\Windows\\\\NTDS\\\\ntds.dit C:\\\\Windows\\\\Temp\\\\*")</code></p>
+<p><strong>Rule Description:</strong> This alert is the result of Netexec’s VSS option to perform a DCSync attack by looking for process creation with event id 1 and the process.command_line as any of the below:</p>
+<pre class=" language-c"><code class="prism  language-c">C<span class="token punctuation">:</span>\\Windows\\system32\\cmd<span class="token punctuation">.</span>exe <span class="token operator">/</span>Q <span class="token operator">/</span>c echo C<span class="token punctuation">:</span>\\Windows\\system32\\cmd<span class="token punctuation">.</span>exe <span class="token operator">/</span>C vssadmin list shadows <span class="token operator">/</span><span class="token keyword">for</span><span class="token operator">=</span>C<span class="token punctuation">:</span> <span class="token operator">^</span><span class="token operator">&gt;</span> C<span class="token punctuation">:</span>\\Windows\\Temp\\__output <span class="token operator">&gt;</span> C<span class="token punctuation">:</span>\\Windows\\TEMP\\execute<span class="token punctuation">.</span>bat <span class="token operator">&amp;</span> C<span class="token punctuation">:</span>\\Windows\\system32\\cmd<span class="token punctuation">.</span>exe <span class="token operator">/</span>Q <span class="token operator">/</span>c C<span class="token punctuation">:</span>\\Windows\\TEMP\\execute<span class="token punctuation">.</span>bat <span class="token operator">&amp;</span> del C<span class="token punctuation">:</span>\\Windows\\TEMP\\execute<span class="token punctuation">.</span>bat
+C<span class="token punctuation">:</span>\\Windows\\system32\\cmd<span class="token punctuation">.</span>exe  <span class="token operator">/</span>C copy \\\\<span class="token operator">?</span>\\GLOBALROOT\\Device\\HarddiskVolumeShadowCopy23\\Windows\\NTDS\\ntds<span class="token punctuation">.</span>dit C<span class="token punctuation">:</span>\\Windows\\Temp\\<span class="token operator">*</span><span class="token punctuation">.</span>tmp 
+
+</code></pre>
+</li>
+<li>
+<p><strong>Rule Name:</strong> Netexec Ntds VSS Option - Event Log Detection</p>
+<p><strong>Detection Query:</strong></p>
+<p><code>(event.code: 4904 OR event.code: 4905) AND process.executable: "C:\\\\Windows\\\\System32\\\\VSSVC.exe"</code></p>
+<p><strong>Rule Description:</strong> This is another alert as a result of Netexec’s VSS option to perform a DCSync attack by looking for generated event logs ID <code>4904</code> and <code>4905</code> with process executable name of <code>C:\\Windows\\System32\\VSSVC.exe</code></p>
+</li>
+</ol>
+<h2 id="detecting-pass-the-hash">Detecting Pass-The-Hash</h2>
+<p>We dumped LSASS with Mimikatz using <code>sekurlsa::logonPasswords full</code></p>
+<ul>
+<li>
+<p>Got the hash of the DC: <code>217e50203a5aba59cefa863c724bf61b</code></p>
+<p><img src="/img/detectadpics/pth1.png" alt="pth1.png"></p>
+</li>
+<li>
+<p>To perform the PTH attack, we ran the command</p>
+<p><code>sekurlsa::pth /user:Administrator /domain:RvB.local/ntlm:217e50203a5aba59cefa863c724bf61b</code></p>
+</li>
+<li>
+<p>We then were able to get a root shell on the Domain Controller authenticating as the Administrator account, as shown by the command prompt <code>whoami /user</code> command.</p>
+<p><img src="/img/detectadpics/pth2.png" alt="pth2.png"></p>
+</li>
+<li>
+<p><strong>Event ID 4624 (Successful Account Logon)</strong></p>
+<ul>
+<li>
+<p><strong>Logon Type: 9 (NewCredentials)</strong>: This logon type shows that credentials were used to create a new session without re-authenticating. Mimikatz abuses this type to inject credentials into a session, allowing attackers to impersonate other users or escalate privileges.</p>
+</li>
+<li>
+<p><strong>Logon GUID: All zeros</strong>: The absence of a valid GUID indicates that this logon was network-based and not linked to a direct interactive session. This is typical of <strong>pass-the-hash</strong> or <strong>pass-the-ticket</strong> techniques, where an attacker uses stolen credentials without the original logon process.</p>
+<p><img src="/img/detectadpics/pth3.png" alt="pth3.png"></p>
+</li>
+</ul>
+</li>
+<li>
+<p><strong>Event ID 4624 (Successful Account Logon)</strong>:</p>
+<ul>
+<li>This event confirms that a logon occurred successfully, with the <strong>SYSTEM</strong> account being used, as seen from the <strong>Security ID</strong> and <strong>Account Name</strong>.</li>
+<li>The <strong>Logon ID</strong> of <strong>0x169AB5D</strong> identifies this specific logon session. This is a key to track because it links all actions associated with this logon.</li>
+</ul>
+</li>
+<li>
+<p><strong>Event ID 4672 (Special Privileges Assigned to New Logon)</strong>:</p>
+<ul>
+<li>This event occurs when special privileges, such as <strong>SeTcbPrivilege</strong> or <strong>SeDebugPrivilege</strong>, are assigned during the logon process. These privileges are typical for high-level accounts like <strong>SYSTEM</strong> or <strong>Administrator</strong>.</li>
+<li>The <strong>Logon ID</strong> is <strong>0x169AB5D</strong>, matching the logon ID from Event 4624. This direct correlation indicates that the same logon session (likely using a hash) was granted elevated privileges.</li>
+</ul>
+</li>
+</ul>
+<p>By correlating <strong>Event ID 4624</strong> and <strong>Event ID 4672</strong> using the shared <strong>Logon ID</strong> (<strong>0x169AB5D</strong>), it is clear that the logon session gained special privileges. This suggests that the <strong>Pass-the-Hash</strong> attack was successful, where the we used the NTLM hash of a privileged account to gain access and escalate privileges, as evidenced by the special privileges being assigned</p>
+<p><img src="/img/detectadpics/pth4.png" alt="pth4.png"></p>
+<p>This <strong>Sysmon Event ID 1</strong> log shows the <strong>cmd.exe</strong> process running <strong>Mimikatz</strong> with <strong>SYSTEM-level privileges</strong>:</p>
+<ul>
+<li>
+<p><strong>Process</strong>: <strong>cmd.exe</strong> was used, spawned by <strong>Mimikatz.exe</strong> from the user’s Downloads folder.</p>
+</li>
+<li>
+<p><strong>User</strong>: The process ran under <strong>NT AUTHORITY\SYSTEM</strong>, confirming elevated privileges.</p>
+</li>
+<li>
+<p><strong>Logon ID (0x169AB5D)</strong>: This links to the previous session where credentials were stolen using Mimikatz.</p>
+</li>
+<li>
+<p><strong>Parent Process</strong>: <strong>Mimikatz.exe</strong>, indicating manual execution of the tool.</p>
+<p><img src="/img/detectadpics/pth5.png" alt="pth5.png"></p>
+</li>
+</ul>
+<ol>
+<li>PowerShell Execution</li>
+</ol>
+<ul>
+<li><strong>PowerShell.exe</strong> was executed under the <strong>Administrator</strong> account.</li>
+</ul>
+<p><strong>2. Mimikatz Execution</strong></p>
+<ul>
+<li><strong>Mimikatz.exe</strong> was initiated directly after PowerShell, which is an indicator for credential dumping. The 4-minute execution window indicates the “attacker” was extracting credentials from memory.</li>
+</ul>
+<p><strong>3. Command Prompt Execution (cmd.exe)</strong></p>
+<ul>
+<li>Following Mimikatz, <strong>cmd.exe</strong> ran under the <strong>SYSTEM</strong> account, signaling privilege escalation.</li>
+</ul>
+<p><strong>4. conhost.exe Termination</strong></p>
+<ul>
+<li><strong>conhost.exe</strong> termination marks the close end of the <strong>SYSTEM</strong> session.</li>
+</ul>
+<p><strong>Detection Query:</strong></p>
+<pre><code>winlog.event_id: ("4624" and "4672") and winlog.event_data.LogonProcessName: "seclogo"
+
+</code></pre>
+<p><strong>Rule Description:</strong></p>
+<p>Potential Pass-The-Hash / Credential Abuse</p>
+<ul>
+<li><strong>Event ID 4624</strong>: Successful logon.</li>
+<li><strong>Event ID 4672</strong>: Special privileges assigned to the logged-in user.</li>
+<li><strong>LogonProcessName: “seclogo”</strong>: Indicates the logon used <strong>NTLM</strong> for network-based authentication.</li>
+</ul>
+<p>This flags events where a privileged account logs in over a network and is immediately granted elevated rights, which can indicate credential abuse or attack.</p>
+<p><img src="/img/detectadpics/pth6.png" alt="pth6.png"></p>
+<p><img src="/img/detectadpics/pth7.png" alt="pth7.png"></p>
+</div>
+
+
+<!-- End of Main Content -->
+
+
+</div>
+</div>
+    <hr>
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                    <ul class="list-inline text-center">
+                        <li>
+                            <a href="#">
+                                <span class="fa-stack fa-lg">
+                                    <i class="fa fa-circle fa-stack-2x"></i>
+                                    <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#">
+                                <span class="fa-stack fa-lg">
+                                    <i class="fa fa-circle fa-stack-2x"></i>
+                                    <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#">
+                                <span class="fa-stack fa-lg">
+                                    <i class="fa fa-circle fa-stack-2x"></i>
+                                    <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                                </span>
+                            </a>
+                        </li>
+                    </ul>
+                    <p class="copyright text-muted">Eric Esquivel's Blog</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- jQuery -->
+    <script src="/js/jquery.js"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src="/js/bootstrap.min.js"></script>
+
+    <!-- Custom Theme JavaScript -->
+    <script src="/js/clean-blog.min.js"></script>
+
+
+</body>
+
+</html>
