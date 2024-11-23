@@ -98,19 +98,21 @@
 <p>We built detections for the following: password spraying, AS-REP Roasting, Kerberoasting, Kerberoasting without Pre-Authentication, Anomalous TGT and Service Ticket requests, DCSyncs, and Pass the Hash.</p>
 <p>Previous knowledge of these attacks is highly suggested to better understand our approach to the detections. We built our detections with the goal of detecting specific tools, and just general suspicious events.</p>
 <h2 id="table-of-contents">Table of Contents</h2>
+Here is the list of things we will be detecting:
 <ul>
-<li>Detecting Password Spraying</li>
-<li>Detecting AS-REP Roasting</li>
-<li>Detecting Anomalous TGT request</li>
-<li>Detecting Kerberoasting</li>
-<li>Detecting Kerberoasting Without Preauthentication</li>
-<li>Detecting DCSyncs
+<li><a href="https://ericesquivel.github.io/posts/detect-ad-attacks#detecting-password-spraying">Password Spraying</a></li>
+<li><a href="https://ericesquivel.github.io/posts/detect-ad-attacks#detecting-as-rep-roasting">AS-REP Roasting</a></li>
+<li><a href="https://ericesquivel.github.io/posts/detect-ad-attacks#detecting-anomalous-tgt-request">Anomalous TGT request</a></li>
+<li><a href="https://ericesquivel.github.io/posts/detect-ad-attacks#detecting-kerberoasting">Kerberoasting</a></li>
+<li><a href="https://ericesquivel.github.io/posts/detect-ad-attacks#detecting-kerberoasting-without-preauthentication">Kerberoasting Without Preauthentication</a></li>
+<li><a href="https://ericesquivel.github.io/posts/detect-ad-attacks#detecting-dcsyncs">DCSyncs</a>
 <ul>
-<li>Mimikatz</li>
+<li><a href="https://ericesquivel.github.io/posts/detect-ad-attacks#detecting-mimikatz’s-dcsync">Mimikatz's DCSync</a></li>
 <li>Netexec</li>
+<li><a href="https://ericesquivel.github.io/posts/detect-ad-attacks#detecting-netexec's-dcsync">Netexec's DCSync</a></li>
 </ul>
 </li>
-<li>Detecting Pass-The-Hash</li>
+<li><a href="https://ericesquivel.github.io/posts/detect-ad-attacks#detecting-pass-the-hash">Detecting Pass-The-Hash</a>
 </ul>
 <h2 id="detecting-password-spraying">Detecting Password Spraying</h2>
 <p>We were able to build detections for password spraying attacks against domain users from the Kerbrute tool when running the following command:</p>
