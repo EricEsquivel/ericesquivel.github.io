@@ -92,13 +92,14 @@
 
 <!-- Post Content -->
 <h1 id="detecting-active-directory-attacks">Detecting Active Directory Attacks</h1>
-<h2 id="introduction">Introduction</h2>
+<hr>
 <p>This is the first part of the Red vs Blue detection engineering lab, made by Eric and Dylan. Here we document the TTPs for numerous tools and develop detection queries.</p>
 <p>For this milestone Eric &amp; Dylan have built detections in Elastic for 7 common Active Directory attacks by using numerous tools such as the ELK stack, Sysmon, Event Viewer, Wireshark and tools for running the AD attacks such as Mimikatz, and the Impacket suite.</p>
 <p>We built detections for the following: password spraying, AS-REP Roasting, Kerberoasting, Kerberoasting without Pre-Authentication, Anomalous TGT and Service Ticket requests, DCSyncs, and Pass the Hash.</p>
 <p>Previous knowledge of these attacks is highly suggested to better understand our approach to the detections. We built our detections with the goal of detecting specific tools, and just general suspicious events.</p>
+<br>
 <h2 id="table-of-contents">Table of Contents</h2>
-Here is the list of things we will be detecting:
+<p>Here is the list of things we will be detecting:</p>
 <ul>
 <li><a href="https://ericesquivel.github.io/posts/detect-ad-attacks#detecting-password-spraying">Password Spraying</a></li>
 <li><a href="https://ericesquivel.github.io/posts/detect-ad-attacks#detecting-as-rep-roasting">AS-REP Roasting</a></li>
@@ -114,6 +115,7 @@ Here is the list of things we will be detecting:
 </li>
 <li><a href="https://ericesquivel.github.io/posts/detect-ad-attacks#detecting-pass-the-hash">Detecting Pass-The-Hash</a>
 </ul>
+<br>
 <h2 id="detecting-password-spraying">Detecting Password Spraying</h2>
 <p>We were able to build detections for password spraying attacks against domain users from the Kerbrute tool when running the following command:</p>
 <p><code>./kerbrute passwordspray usernames.txt "bP@ssw0rd" -d testlab.local --dc dc.testlab.local</code></p>
@@ -175,6 +177,7 @@ Additional Information<span class="token punctuation">:</span>
 <p><code>winlog.event_data.TicketOptions : "0x10" and winlog.event_id : "4768"</code></p>
 <p><strong>Rule Description:</strong></p>
 <p><strong>This is a potential password spraying attack from Kerbrute.</strong></p>
+<br>
 <h2 id="detecting-as-rep-roasting">Detecting AS-REP Roasting</h2>
 <p>We were able to build detections for AS-REP Roasting attacks from the Impacket tool, GetNPUsers, when running the following command:</p>
 <p><code>impacket-GetNPUsers -no-pass -usersfile npusers.txt testlab.local/</code></p>
@@ -213,6 +216,7 @@ Additional Information<span class="token punctuation">:</span>
 <p><strong>Detection Query:</strong></p>
 <p><code>winlog.event_id : "4768" and user.name : "alice"</code></p>
 <p><strong>Rule Description:</strong> AS-REP Roasting Honey Pot user was detected.</p>
+<br>
 <h2 id="detecting-anomalous-tgt-request">Detecting Anomalous TGT request</h2>
 <p>We can detect when Impacket requests a TGT and Service Ticket. The Service Ticket request log is the same log generated when running Kerberoasting so that will be shown in that section, however the TGT request logs generated from Get-TGT and Kerberoasting are different so it is split up.</p>
 <p><code>impacket-getTGT testlab.local/bob:'bP@ssw0rd'</code></p>
@@ -246,6 +250,7 @@ Additional Information<span class="token punctuation">:</span>
 <p><code>winlog.event_id : "4768" and winlog.event_data.TicketOptions : "0x50800000" and winlog.event_data.TicketEncryptionType : "0x12" and winlog.event_data.PreAuthType : "2"</code></p>
 <p><strong>Rule Description:</strong></p>
 <p>This log is the result of Impacket requesting a TGT, most likely with impacket-GetTGT. This allows attackers to request TGTs likely to be used with Pass-The-Ticket (PTT).</p>
+<br>
 <h2 id="detecting-kerberoasting">Detecting Kerberoasting</h2>
 <p>We were able to build detections for Kerberoasting attacks from the Impacket tool, GetUserSPNs:</p>
 <p><code>impacket-GetUserSPNs testlab.local/bob:'bP@ssw0rd' -request</code></p>
@@ -311,6 +316,7 @@ Additional Information<span class="token punctuation">:</span>
 <p><code>winlog.event_id : "4769" and winlog.event_data.TicketOptions : "0x40810010" and winlog.event_data.TicketEncryptionType : "0x17"</code></p>
 <p><strong>Rule Description:</strong></p>
 <p>This log is the 4769 log generated from Keberoasting with Impacket. Note that this 4769 log that is generated matches with the log generated from impacket-getST (so no extra alert needed for that), however this 4768 does not match with impacket-GetTGT. Seeing this alert after the “Kerberoasting with Impacket - TGT request” alert is indicative of Kerberoasting with Impacket.</p>
+<br>
 <h2 id="detecting-kerberoasting-without-preauthentication">Detecting Kerberoasting Without Preauthentication</h2>
 <p>This is just like AS-REP roasting, except attackers are able to use the user that does not require pre-authentication to request service tickets to other SPNs by simply changing the target SPN from krbtgt to another SPN. This allows for kerberoasting without credentials. The resulting generated log looks like an AS-REP Roasting generated log except the “Service Name” will not be krbtgt.</p>
 <p><code>impacket-GetUserSPNs -no-preauth "alice" -usersfile usernames -dc-host 192.168.108.139 testlab.local/</code></p>
@@ -342,6 +348,7 @@ Additional Information<span class="token punctuation">:</span>
 <p><strong>Detection Query:</strong></p>
 <p><code>winlog.event_id : "4768" and winlog.event_data.TicketOptions : "0x50800000" and winlog.event_data.PreAuthType : "0" and not service.name : "krbtgt"</code></p>
 <p><strong>Rule Description:</strong> This log is the result of kerberoasting without pre-authentication using Impacket. This attack allows for obtaining service tickets without authenticating to the domain.</p>
+<br>
 <h2 id="detecting-dcsyncs">Detecting DCSyncs</h2>
 <p>We can detect DCSync attacks from both Mimikatz and Netexec.</p>
 <p>Mimikatz has 1 method of performing a DCSync. You have to specify the user</p>
@@ -475,6 +482,7 @@ C<span class="token punctuation">:</span>\\Windows\\system32\\cmd<span class="to
 <p><strong>Rule Description:</strong> This is another alert as a result of Netexec’s VSS option to perform a DCSync attack by looking for generated event logs ID <code>4904</code> and <code>4905</code> with process executable name of <code>C:\\Windows\\System32\\VSSVC.exe</code></p>
 </li>
 </ol>
+<br>
 <h2 id="detecting-pass-the-hash">Detecting Pass-The-Hash</h2>
 <p>We dumped LSASS with Mimikatz using <code>sekurlsa::logonPasswords full</code></p>
 <ul>
