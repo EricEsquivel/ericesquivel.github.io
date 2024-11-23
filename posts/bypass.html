@@ -109,7 +109,7 @@
 <p>They consist of 2 parts: a user-mode application and a kernel-mode driver. Both parts gather information by collecting data on events such as system logs, network traffic, inter-process communications (IPCs), RPC calls, authentication attempts, and user activity. EDRs also analyze, correlate data and can automatically respond to these threats by isolating endpoints or terminating suspicious processes.</p>
 <p>I would also like to add that the antivirus, or Next-Gen AV as they like to call it, ships with/takes advantage of the EDR telemetry, but you aren’t really “bypassing EDR” unless you mute telemetry or find a way that doesn’t generate the logs. AV alerts is not the same as EDR telemetry.</p>
 <p>When most people talk about bypassing EDR, they mostly refer to the NGAV. With that being said, throughout this blog, I am bypassing their NGAV since my payloads are not killed nor do they generate any AV alerts, but the EDR telemetry still exists for Blue Teamers to use.</p>
-<p>All the data and alerts collected are sent and logged in a dashboard or console which can be used for monitoring and threat hunting.</p>
+<p>Lastly, all the data and alerts collected are sent and logged in a dashboard or console which can be used for monitoring and threat hunting.</p>
 <p><img src="/img/EDRassets/dashboard.png" alt="dashboard.png"></p>
 <br>
 <h2 id="how-edrs-detect-you">How EDRs Detect You</h2>
