@@ -93,10 +93,9 @@
 <!-- Post Content -->
 <h1 id="detecting-active-directory-attacks">Detecting Active Directory Attacks</h1>
 <hr>
-<p>This is the first part of the Red vs Blue detection engineering lab, made by Eric and Dylan. Here we document the TTPs for numerous tools and develop detection queries.</p>
-<p>For this milestone Eric &amp; Dylan have built detections in Elastic for 7 common Active Directory attacks by using numerous tools such as the ELK stack, Sysmon, Event Viewer, Wireshark and tools for running the AD attacks such as Mimikatz, and the Impacket suite.</p>
-<p>We built detections for the following: password spraying, AS-REP Roasting, Kerberoasting, Kerberoasting without Pre-Authentication, Anomalous TGT and Service Ticket requests, DCSyncs, and Pass the Hash.</p>
-<p>Previous knowledge of these attacks is highly suggested to better understand our approach to the detections. We built our detections with the goal of detecting specific tools, and just general suspicious events.</p>
+<p>Active Directory is the backbone of many enterprise environments, handling identity and access management. But, its critical role also makes it a prime target for attackers looking to compromise networks.</p>
+<p>In this blog post, we will explore the IoCs associated with different tools like Impacket and Netexec and how to detect the various types of Active Directory attacks that are performed. The goal of this post is to serve as a valuable resource for both attackers and defenders. Attackers can learn how to modify their tools for better operational security, while defenders can gain a deeper understanding of attack techniques to enhance their detection capabilities and catch threats earlier.</p>
+<p>This post was made by myself and my good friend <a hrief="https://www.linkedin.com/in/dylandavis2">Dylan Davis</a>. Go check him out, he is awesome.</p>
 <p>Here is the list of things we will be detecting:</p>
 <ul>
 <li><a href="https://ericesquivel.github.io/posts/detect-ad-attacks#detecting-password-spraying">Password Spraying</a></li>
@@ -168,12 +167,10 @@ Additional Information<span class="token punctuation">:</span>
 ...
 
 </code></pre>
-<p><strong>Rule Name:</strong></p>
-<p><strong>Kerbrute Password Spray</strong></p>
+<p><strong>Rule Name:</strong> Kerbrute Password Spray</p>
 <p><strong>Detection Query:</strong></p>
 <p><code>winlog.event_data.TicketOptions : "0x10" and winlog.event_id : "4768"</code></p>
-<p><strong>Rule Description:</strong></p>
-<p><strong>This is a potential password spraying attack from Kerbrute.</strong></p>
+<p><strong>Rule Description:</strong> This is a potential password spraying attack from Kerbrute.</p>
 <br>
 <h2 id="detecting-as-rep-roasting">Detecting AS-REP Roasting</h2>
 <p>We were able to build detections for AS-REP Roasting attacks from the Impacket tool, GetNPUsers, when running the following command:</p>
@@ -383,7 +380,7 @@ Additional Information<span class="token punctuation">:</span>
 <ol>
 <li>
 <p><strong>Drsuapi to sync a single user</strong></p>
-<p>The command to DCSync a single user with Netexec over the Drsuapu protocol is:</p>
+<p>The command to DCSync a single user with Netexec over the Drsuapi protocol is:</p>
 <p><code>nxc smb 192.168.108.139 -u Administrator -d testlab.local -p 'P@ssw0rd' --ntds --user krbtgt</code></p>
 <p><img src="/img/detectadpics/nxcdcsync1.png" alt="nxcdcsync1.png"></p>
 <p>When using netexec to dump a specific user, it was generate 3 event id 4662 logs. The first 2 will have a normal GUID of <code>1131f6aa-9c07-11d1-f79f-00c04fc2dcd2</code>, which is <em>DS-Replication-Get-Changes</em>.</p>
@@ -399,7 +396,7 @@ Additional Information<span class="token punctuation">:</span>
 <p><code>nxc smb 192.168.1.100 -u UserName -p 'PASSWORDHERE' -M ntdsutil</code></p>
 <p><img src="/img/detectadpics/nxcdcsync5.png" alt="nxcdcsync5.png"></p>
 <p><img src="/img/detectadpics/nxcdcsync6.png" alt="nxcdcsync6.png"></p>
-<p>This is the chain of events when running when running the -M ntdsutil command. To detect this we can look for process creation with event id 1 and the process.command_line as any of the below.</p>
+<p>This is the chain of events when running the -M ntdsutil command. To detect this we can look for process creation with event id 1 and the process.command_line as any of the below.</p>
 <pre class=" language-c"><code class="prism  language-c">cmd<span class="token punctuation">.</span>exe <span class="token operator">/</span>Q <span class="token operator">/</span>c powershell <span class="token string">"ntdsutil.exe 'ac i ntds' 'ifm' 'create full C:\Windows\Temp\172963876' q q"</span> <span class="token number">1</span><span class="token operator">&gt;</span> \Windows\Temp\QuGPmj <span class="token number">2</span><span class="token operator">&gt;</span><span class="token operator">&amp;</span><span class="token number">1</span>
 powershell <span class="token string">"ntdsutil.exe 'ac i ntds' 'ifm' 'create full C:\Windows\Temp\172963876' q q"</span>
 <span class="token string">"C:\Windows\system32\ntdsutil.exe"</span> <span class="token string">"ac i ntds"</span> ifm <span class="token string">"create full C:\Windows\Temp\172963876"</span> q q
@@ -410,7 +407,7 @@ cmd<span class="token punctuation">.</span>exe <span class="token operator">/</s
 <p><img src="/img/detectadpics/nxcdcsync7.png" alt="nxcdcsync7.png"></p>
 <p>This file then gets deleted with the rmdir command, and another file gets created in its place. Additionally, the ‘172963876’ directory contains the ntds.dit and the SECURITY and SYSTEM registry keys. This entire directory will be deleted shortly after.</p>
 <p><img src="/img/detectadpics/nxcdcsync8.png" alt="nxcdcsync8.png"></p>
-<p>After the command is finished running, we will have the .tmp file and the new file with no extensions remaining. Both of these will have no contents in them.</p>
+<p>After the command is finished running, we will have the .tmp file and the new file with no file-extension remaining. Both of these will have no contents in them.</p>
 <p><img src="/img/detectadpics/nxcdcsync9.png" alt="nxcdcsync9.png"></p>
 <p>Lastly, there will be lots of event id 4799 logs generated on the domain controller. (182 from my testing to be exact) with the process executable of either C:\Windows\System32\ntdsutil.exe or C:\Windows\System32\VSSVC.exe.</p>
 <p><img src="/img/detectadpics/nxcdcsync10.png" alt="nxcdcsync10.png"></p>
