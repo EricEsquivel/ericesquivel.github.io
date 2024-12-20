@@ -109,6 +109,7 @@
 </li>
 <li><a href="https://ericesquivel.github.io/posts/detect-ad-attacks#detecting-pass-the-hash">Detecting Pass-The-Hash</a>
 </ul>
+<p></p>
 <br>
 <h2 id="detecting-password-spraying">Detecting Password Spraying</h2>
 <p>We were able to build detections for password spraying attacks against domain users from the Kerbrute tool when running the following command:</p>
@@ -175,7 +176,7 @@ Additional Information<span class="token punctuation">:</span>
 <p><code>impacket-GetNPUsers -no-pass -usersfile npusers.txt testlab.local/</code></p>
 <p>Using GetNPUsers to AS-REP Roast is interesting. It supplies an etype (encryption type) of <code>0x17</code> which is 23 in decimal meaning RC4 encryption. This is not normal as most environments will use AES256 which is <code>0x12</code> (18). Additionally, GetNPUsers supplies a Ticket Options of <code>0x50800000</code> which is also not normal as previously discussed. Lastly, we can see the Pre-Authentication type of <code>0</code> meaning a TGT was requested for the account without pre auth data (as-rep roast).</p>
 <p>Using all of these together, we can easily detect an AS-REP Roast attack from Impacket’s GetNPUsers.</p>
-<p>Generated log - Event ID</p>
+<p>Generated log - Event ID: 4768</p>
 <pre class=" language-vbnet"><code class="prism  language-vbnet">A Kerberos authentication ticket <span class="token punctuation">(</span>TGT<span class="token punctuation">)</span> was requested.
 
 Account Information<span class="token punctuation">:</span>
@@ -247,7 +248,7 @@ Additional Information<span class="token punctuation">:</span>
 <p>We were able to build detections for Kerberoasting attacks from the Impacket tool, GetUserSPNs:</p>
 <p><code>impacket-GetUserSPNs testlab.local/bob:'bP@ssw0rd' -request</code></p>
 <p>When using GetUserSPNs to obtain both a TGT and then the service tickets, the event logs of 4768 &amp; 4769 are incredibly anomalous and easily detectable.</p>
-<p>Impacket will make the TGT ****request (event ID 4768) will be generated with a Ticket Encryption Type: <code>0x17</code> (RC4) and Ticket Options: <code>0x50800000</code>.</p>
+<p>Impacket will make the TGT request (event ID 4768) which will be generated with a Ticket Encryption Type: <code>0x17</code> (RC4) and Ticket Options: <code>0x50800000</code>.</p>
 <p>It will <strong>also</strong> make the service ticket requests (event ID 4769) with a Ticket Encryption Type: <code>0x17</code> (RC4) and Ticket Options: <code>0x40810010</code>. (This 4769 log also looks exactly the same as the log generated from running getST, though the 4768 log from getST looks exactly like getTGT instead of the 4768 from GetUserSPNs).</p>
 <p>Impacket will make the service ticket have an RC4 etype to make it easier to crack, but im not sure why they would also do the same for the TGT request. Seeing both of these logs is highly suspicious and most likely the result of running GetUserSPNs with the -request flag.</p>
 <p>Note: This log does not match the 4768 log generated from getTGT or the 4768 from getST; it is unique.</p>
@@ -307,7 +308,8 @@ Additional Information<span class="token punctuation">:</span>
 <p><strong>Detection Query:</strong></p>
 <p><code>winlog.event_id : "4769" and winlog.event_data.TicketOptions : "0x40810010" and winlog.event_data.TicketEncryptionType : "0x17"</code></p>
 <p><strong>Rule Description:</strong></p>
-<p>This log is the 4769 log generated from Keberoasting with Impacket. Note that this 4769 log that is generated matches with the log generated from impacket-getST (so no extra alert needed for that), however this 4768 does not match with impacket-GetTGT. Seeing this alert after the “Kerberoasting with Impacket - TGT request” alert is indicative of Kerberoasting with Impacket.</p>
+<p>This log is the 4769 log generated from Kerberoasting with Impacket. Note that this 4769 log that is generated matches with the log generated from impacket-getST (so no extra alert needed for that), however this 4768 does not match with impacket-GetTGT. Seeing this alert after the “Kerberoasting with Impacket - TGT request” alert is indicative of Kerberoasting with Impacket.</p>
+<p>However, just like with AS-REP Roasting, attackers can modify their tool to bypass this detection. Another approach will be to generate a honey pot account with a super secure password. Then we can build a detection rule to check if a service ticket is ever requested for this user. If so, then we caught the attacker.</p>
 <br>
 <h2 id="detecting-kerberoasting-without-preauthentication">Detecting Kerberoasting Without Preauthentication</h2>
 <p>This is just like AS-REP roasting, except attackers are able to use the user that does not require pre-authentication to request service tickets to other SPNs by simply changing the target SPN from krbtgt to another SPN. This allows for kerberoasting without credentials. The resulting generated log looks like an AS-REP Roasting generated log except the “Service Name” will not be krbtgt.</p>
@@ -568,7 +570,10 @@ C<span class="token punctuation">:</span>\Windows\system32\cmd<span class="token
 <p><img src="/img/detectadpics/pth6.png" alt="pth6.png"></p>
 <p><img src="/img/detectadpics/pth7.png" alt="pth7.png"></p>
 </div>
-
+<br>
+<h2 id="conclusion">Conclusion</h2>
+<p>Building effective detections for various attacks is crucial to staying one step ahead of attackers. As we've seen, many tools have identifiable characteristics that can help in detecting malicious activity. However, attackers can easily modify these tools to evade detection. Therefore, it is important to noy only detect the tools but also the behavior of the attacks themselves for stronger and more resilient detections.</p>
+<p>Hopefully, this blog has provided valuable insights into how different tools and attacks work, allowing defenders to improve their detections while also helping attackers refine their operational security.</p>
 
 <!-- End of Main Content -->
 
