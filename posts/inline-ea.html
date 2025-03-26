@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Inline-EA: Executing .NET assemblies without any alerts</title>
+
+    <!-- stackedit.io -->
+    <link href="https://stackedit.io/style.css" rel="stylesheet"> 
+    
+
+    <!-- Bootstrap Core CSS -->
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link href="/css/clean-blog.min.css" rel="stylesheet">
+
+    <!-- Custom Fonts -->
+    <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/css'>
+
+    <link href="/css/style2.css" rel="stylesheet"> 
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/index.html">Eric Esquivel's Blog</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/index.html">Home</a>
+                    </li>
+                    <li>
+                        <a href="/assets/resume.pdf">Resume</a>
+                    </li>
+                    <li>
+                        <a href="https://github.com/EricEsquivel">GitHub</a>
+                    </li>
+                </ul>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <!-- Page Header -->
+    <!-- Set your background image for this header on the line below. -->
+    <header class="intro-header" style="background-image: url('/img/redandblack.png')">
+        <div class="container">
+            <div class="row">
+                <div class="">
+                    <div class="site-heading">
+                        <h1 font color="#000000">Inline-EA: Executing .NET assemblies without any alerts</h1>
+                        <hr class="small">
+                        <span class="subheading"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+<div class="stackedit">
+<div class="stackedit__html">
+
+
+    <!-- Post Content -->
+<!--
+<h1 id="bypassing-edr">Bypassing CrowdStrike Falcon & Microsoft Defender for Endpoint (MDE)</h1>
+<hr>-->
+<p>After developing a shellcode loader that bypassed Falcon and MDE and writing a blog about it, I decided to take on the next challenge. I wanted to see if I could develop a loader that worked for Elastic, as well as perform post-exploitation. My first thought was being able to execute .NET assemblies without triggering any alerts, so that's what I decided to do.</p>
+<p>I wanted to use this short and sweet post just to demo my new tool <a href="https://github.com/EricEsquivel/Inline-EA">Inline-EA</a>, a Beacon Object File (BOF) built to not trigger any alerts when executing .NET assemblies.</p>
+<br>
+<p>Here is the demo video for Elastic. I also show off the --patchexit flag and why you may need it, as well as some information on ETW.</p>
+<video width="680" height="480" controls>
+    <source src="/img/inline-ea-assets/elastic_inline-ea.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+<br>
+<p>Here is the demo video for CrowdStrike Falcon.</p>
+<video width="680" height="480" controls>
+    <source src="/img/inline-ea-assets/falcon_inline-ea.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+<br>
+<p>Lastly, here is the demo video for Microsoft Defender for Endpoint (MDE).</p>
+<video width="680" height="480" controls>
+    <source src="/img/inline-ea-assets/mde_inline-ea.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video> 
+<h2 id="wrapping-up">Wrapping Up</h3>
+<p>I definitely could not have accomplished this alone without standing on the shoulders of those who released public tools and conducted research. Special thanks to:</p>
+<ul>
+    <li><strong>InlineExecute-Assembly by AnthemToTheEgo</strong> - Provided a base template for inline executing .NET assemblies in C in a BOF. I just had to port it from C to C++.</li>
+    <li><strong>Maldev Academy</strong> - Contained a great module for inline executing .NET assemblies in C++ as a normal program, but not as a BOF. I combined this and AnthemToTheEgo's project to execute .NET assemblies in C++ as a BOF.</li>
+    <li><strong>Unmanaged .NET Patching by Kyle Avery</strong> - A resource on how to patch System.Environment.Exit.</li>
+    <li><strong>New AMSI Bypass Technique Modifying CLR.DLL in Memory by Practical Security Analytics LLC</strong> - Patching a string in clr.dll to bypass AMSI.</li>
+    <li><strong>EAT Hooking by Jimster480</strong> - I came up with the idea to bypass ETW by EAT Hooking advapi32.dll!EventWrite and found this general EAT Hooking code snippet, which worked great.</li>
+</ul>
+<p>I hope this tool proves useful and highlights how security products can be bypassed. It is our responsibility in the security industry to stay vigilant and defend against emerging threats.</p>
+</div>
+
+
+    <!-- End of Main Content -->
+
+
+</div>
+</div>
+    <hr>
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                    <ul class="list-inline text-center">
+                        <li>
+                            <a href="#">
+                                <span class="fa-stack fa-lg">
+                                    <i class="fa fa-circle fa-stack-2x"></i>
+                                    <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#">
+                                <span class="fa-stack fa-lg">
+                                    <i class="fa fa-circle fa-stack-2x"></i>
+                                    <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#">
+                                <span class="fa-stack fa-lg">
+                                    <i class="fa fa-circle fa-stack-2x"></i>
+                                    <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                                </span>
+                            </a>
+                        </li>
+                    </ul>
+                    <p class="copyright text-muted">Eric Esquivel's Blog</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- jQuery -->
+    <script src="/js/jquery.js"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src="/js/bootstrap.min.js"></script>
+
+    <!-- Custom Theme JavaScript -->
+    <script src="/js/clean-blog.min.js"></script>
+
+
+</body>
+
+</html>
