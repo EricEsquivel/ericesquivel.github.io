@@ -96,15 +96,15 @@
 <hr>-->
 <p>After developing a shellcode loader that bypassed Falcon and MDE and writing a blog about it, I decided to take on the next challenge. I wanted to see if I could develop a loader that worked for Elastic, as well as perform post-exploitation. My first thought was being able to execute .NET assemblies without triggering any alerts, so that's what I decided to do.</p>
 <p>I wanted to use this short and sweet post just to demo my new tool <a href="https://github.com/EricEsquivel/Inline-EA">Inline-EA</a>, a Beacon Object File (BOF) built to not trigger any alerts when executing .NET assemblies.</p>
-<br>
-<p>Here is the demo video for Elastic. I also show off the --patchexit flag and why you may need it, as well as some information on ETW.</p>
+<p>Here is the demo video for Elastic.</p>
 <video width="680" height="480" controls>
     <source src="/img/inline-ea-assets/elastic_inline-ea.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 <br>
-<p>Here is the demo video for CrowdStrike Falcon.</p>
+
 <video width="680" height="480" controls>
+    <p>Here is the demo video for CrowdStrike Falcon.</p>
     <source src="/img/inline-ea-assets/falcon_inline-ea.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
@@ -113,15 +113,17 @@
 <video width="680" height="480" controls>
     <source src="/img/inline-ea-assets/mde_inline-ea.mp4" type="video/mp4">
   Your browser does not support the video tag.
-</video> 
+</video>
+<br>
+<br>
 <h2 id="wrapping-up">Wrapping Up</h3>
 <p>I definitely could not have accomplished this alone without standing on the shoulders of those who released public tools and conducted research. Special thanks to:</p>
 <ul>
-    <li><strong>InlineExecute-Assembly by AnthemToTheEgo</strong> - Provided a base template for inline executing .NET assemblies in C in a BOF. I just had to port it from C to C++.</li>
-    <li><strong>Maldev Academy</strong> - Contained a great module for inline executing .NET assemblies in C++ as a normal program, but not as a BOF. I combined this and AnthemToTheEgo's project to execute .NET assemblies in C++ as a BOF.</li>
-    <li><strong>Unmanaged .NET Patching by Kyle Avery</strong> - A resource on how to patch System.Environment.Exit.</li>
-    <li><strong>New AMSI Bypass Technique Modifying CLR.DLL in Memory by Practical Security Analytics LLC</strong> - Patching a string in clr.dll to bypass AMSI.</li>
-    <li><strong>EAT Hooking by Jimster480</strong> - I came up with the idea to bypass ETW by EAT Hooking advapi32.dll!EventWrite and found this general EAT Hooking code snippet, which worked great.</li>
+    <li><a href="https://github.com/anthemtotheego/InlineExecute-Assembly">InlineExecute-Assembly</a> by AnthemToTheEgo - Provided a base template for inline executing .NET assemblies in C in a BOF. I just had to port it from C to C++.</li>
+    <li><a href="https://maldevacademy.com">Maldev Academy</a> - Contained a great module for inline executing .NET assemblies in C++ as a normal program, but not as a BOF. I combined this and AnthemToTheEgo's project to execute .NET assemblies in C++ as a BOF.</li>
+    <li><a href="https://kyleavery.com/posts/unmanaged-dotnet-patching">Unmanaged .NET Patching</a> by Kyle Avery - A resource on how to patch System.Environment.Exit.</li>
+    <li><a href="https://practicalsecurityanalytics.com/new-amsi-bypss-technique-modifying-clr-dll-in-memory">New AMSI Bypass Technique Modifying CLR.DLL in Memory</a> by Practical Security Analytics LLC - Patching a string in clr.dll to bypass AMSI.</li>
+    <li><a href="https://www.unknowncheats.me/forum/c-and-c/50426-eat-hooking-dlls.html">EAT Hooking</a> by Jimster480 - I came up with the idea to bypass ETW by EAT Hooking advapi32.dll!EventWrite and found this general EAT Hooking code snippet, which worked great.</li>
 </ul>
 <p>I hope this tool proves useful and highlights how security products can be bypassed. It is our responsibility in the security industry to stay vigilant and defend against emerging threats.</p>
 </div>
